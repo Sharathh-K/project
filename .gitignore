@@ -8,3 +8,6 @@ __pycache__/
 
 # Jupyter checkpoints
 .ipynb_checkpoints/
+
+# Unrequired Notebook
+Notebooks/02_preprocess_and_split.ipynb
