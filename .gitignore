@@ -12,3 +12,4 @@ __pycache__/
 # Unrequired Notebook
 Notebooks/02_preprocess_and_split.ipynb
 Notebooks/Double_ML_pipeline.ipynb
+Notebooks/Double_ML_RandomForest.ipynb
