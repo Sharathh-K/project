@@ -1,0 +1,12 @@
+# Python 3.12. Tested versions are recorded in notebook 05 and dashboard report.json.
+numpy
+pandas
+scipy
+scikit-learn
+econml
+dowhy
+matplotlib
+networkx
+plotly
+joblib
+ipykernel
