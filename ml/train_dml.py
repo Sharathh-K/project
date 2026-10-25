@@ -22,7 +22,7 @@ OUT_DIR = Path("EconoCausal/results")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 SEED = 42
-OUTCOME = "spend"
+OUTCOME = "visit"
 CONTROL = "No E-Mail"
 ARMS = ["Mens E-Mail", "Womens E-Mail"]
 
@@ -138,10 +138,9 @@ def train_arm(df, X_all, arm):
     print("\nUplift by predicted-ITE decile (test set):")
     print(decile_table(test).round(3).to_string(index=False))
 
-    return sub[
-        ["customer_id", "arm", "split", "treatment", OUTCOME,
-         "visit", "conversion", "ite_pred"]
-    ]
+    
+           cols = list(dict.fromkeys(["customer_id", "arm", "split", "treatment", OUTCOME, "visit", "conversion", "ite_pred"]))
+   return sub[cols]
 
 
 def main():
