@@ -139,12 +139,9 @@ def train_arm(df, X_all, arm):
     print(decile_table(test).round(3).to_string(index=False))
 
     
-         cols = list(dict.fromkeys(
-        ["customer_id", "arm", "split", "treatment", OUTCOME,
-         "visit", "conversion", "ite_pred"]
-    ))
-    return sub[cols]     
-
+    
+    cols = ["customer_id", "arm", "split", "treatment", "visit", "conversion", "ite_pred"]
+    return sub[cols]
 
 def main():
     df, X_all = load_data()
