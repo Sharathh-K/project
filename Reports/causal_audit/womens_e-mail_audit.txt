@@ -1,0 +1,40 @@
+Treatment: Womens E-Mail
+Control: No E-Mail
+Rows used: 42693
+Treated conversion rate: 0.00883714
+Control conversion rate: 0.00572609
+Raw ATE: 0.00311106
+DoWhy ATE: 0.00311106
+
+--- random_common_cause ---
+Refute: Add a random common cause
+Estimated effect:0.0031110575110852605
+New effect:0.0031110369195892747
+p value:0.98
+
+
+--- placebo_treatment ---
+Refute: Use a Placebo Treatment
+Estimated effect:0.0031110575110852605
+New effect:-6.137093232061584e-05
+p value:0.98
+
+
+--- data_subset ---
+Refute: Use a subset of data
+Estimated effect:0.0031110575110852605
+New effect:0.003073092127162126
+p value:1.0
+
+
+--- Unobserved confounder sensitivity ---
+ treatment_strength_setting  outcome_strength_setting                                                                                                             result
+                       0.01                      0.01  Refute: Add an Unobserved Common Cause\nEstimated effect:0.0031110575110852605\nNew effect:0.004565946154704506\n
+                       0.01                      0.05  Refute: Add an Unobserved Common Cause\nEstimated effect:0.0031110575110852605\nNew effect:0.000922323519733724\n
+                       0.01                      0.10 Refute: Add an Unobserved Common Cause\nEstimated effect:0.0031110575110852605\nNew effect:0.0004863478790660819\n
+                       0.05                      0.01  Refute: Add an Unobserved Common Cause\nEstimated effect:0.0031110575110852605\nNew effect:0.004449804852340521\n
+                       0.05                      0.05   Refute: Add an Unobserved Common Cause\nEstimated effect:0.0031110575110852605\nNew effect:0.00728705632149463\n
+                       0.05                      0.10  Refute: Add an Unobserved Common Cause\nEstimated effect:0.0031110575110852605\nNew effect:0.006515756989328228\n
+                       0.10                      0.01  Refute: Add an Unobserved Common Cause\nEstimated effect:0.0031110575110852605\nNew effect:0.003903754295067355\n
+                       0.10                      0.05  Refute: Add an Unobserved Common Cause\nEstimated effect:0.0031110575110852605\nNew effect:0.006777814398588683\n
+                       0.10                      0.10  Refute: Add an Unobserved Common Cause\nEstimated effect:0.0031110575110852605\nNew effect:0.006240482074516593\n

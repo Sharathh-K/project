@@ -1,0 +1,37 @@
+treatment_strength_setting,outcome_strength_setting,result
+0.01,0.01,"Refute: Add an Unobserved Common Cause
+Estimated effect:0.006805006519615926
+New effect:0.007391552192059253
+"
+0.01,0.05,"Refute: Add an Unobserved Common Cause
+Estimated effect:0.006805006519615926
+New effect:0.006449577938261439
+"
+0.01,0.1,"Refute: Add an Unobserved Common Cause
+Estimated effect:0.006805006519615926
+New effect:0.0014581309873876735
+"
+0.05,0.01,"Refute: Add an Unobserved Common Cause
+Estimated effect:0.006805006519615926
+New effect:0.006996507683823429
+"
+0.05,0.05,"Refute: Add an Unobserved Common Cause
+Estimated effect:0.006805006519615926
+New effect:0.00779710227944657
+"
+0.05,0.1,"Refute: Add an Unobserved Common Cause
+Estimated effect:0.006805006519615926
+New effect:0.002754014745877567
+"
+0.1,0.01,"Refute: Add an Unobserved Common Cause
+Estimated effect:0.006805006519615926
+New effect:0.006177635748773478
+"
+0.1,0.05,"Refute: Add an Unobserved Common Cause
+Estimated effect:0.006805006519615926
+New effect:0.0066396741577119875
+"
+0.1,0.1,"Refute: Add an Unobserved Common Cause
+Estimated effect:0.006805006519615926
+New effect:0.011025699494283184
+"
