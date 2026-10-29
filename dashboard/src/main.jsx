@@ -10,6 +10,7 @@ import {
   outcomes,
 } from "./analysis.mjs";
 import "./style.css";
+import Allocation from "./Allocation.jsx";
 
 const format = (n) =>
   new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(n);
@@ -210,7 +211,7 @@ function App() {
         <div className="brand">
           <span>E</span>EconoCausal
         </div>
-        <p className="caption">WEEKS 1–2 · MID-PROJECT</p>
+        <p className="caption">WEEKS 1–3 · ALLOCATION</p>
         <nav>
           {[
             "Start & data",
@@ -218,6 +219,7 @@ function App() {
             "Customer scores",
             "Uplift evidence",
             "Causal audit",
+            "Budget allocation",
             "How to use",
           ].map((t) => (
             <button
@@ -232,7 +234,7 @@ function App() {
         <p className="aside-note">
           A guided email experiment
           <br />
-          Learn → estimate → check
+          Learn → estimate → check → allocate
         </p>
       </aside>
       <main>
@@ -341,9 +343,8 @@ function App() {
                         : `This budget can cover up to ${format(capacity)} of the ${format(filtered.length)} currently filtered customers.`}
                     </p>
                     <small>
-                      Week 1 planning only. No customer allocation is performed.
-                      $0.10 is an editable assumption; optimal allocation
-                      belongs to Week 3.
+                      Capacity preview only. Open Budget allocation for Week 3 recommendations.
+                      $0.10 is an editable assumption; Week 3 allocation uses this assumption.
                     </small>
                   </section>
                 </div>
@@ -913,9 +914,10 @@ function App() {
                 ))}
               </>
             )}
+            {tab === "Budget allocation" && <Allocation scores={scores} source={source} budget={budget} setBudget={setBudget} cost={cost} setCost={setCost} Chart={Chart} Metric={Metric}/> }
             {tab === "How to use" && (
               <section className="card">
-                <h2>A five-minute explanation for friends</h2><p><a href="/INTERVIEW_GUIDE.md" target="_blank" rel="noreferrer">Open the full project and interview guide</a></p>
+                <h2>A five-minute explanation for friends</h2><p><b>Budget allocation:</b> Set a budget and cost per email, choose a population, and inspect the recommended action for every customer. For $1 and $0.10 per email, at most ten customers are selected. These are predicted revenue gains, not realized sales.</p><p><a href="/INTERVIEW_GUIDE.md" target="_blank" rel="noreferrer">Open the full project and interview guide</a></p>
                 <ol>
                   <li>
                     <b>Start & data:</b> “These are 64,000 customers. Uploading
@@ -975,7 +977,7 @@ function App() {
           </>
         )}
         <footer>
-          Week 1 · Week 2 · Mid-project review — Python, DoWhy, EconML, React
+          Week 1 · Week 2 · Mid-project review · Week 3 — Python, DoWhy, EconML, React
           and Plotly
         </footer>
       </main>

@@ -1,6 +1,6 @@
 # EconoCausal: from the dataset to the mid-project review
 
-This guide describes the implemented work through notebooks 01–06 and the React dashboard. It does not claim that Week 3 optimization or Week 4 APIs and drift detection are finished.
+This guide describes notebooks 01–07 and the React dashboard through Week 3. Week 4 APIs and drift detection remain future work.
 
 ## 1. The business question
 
@@ -157,7 +157,7 @@ The interface uses React and Plotly.js with the verified notebook outputs. It bu
 ### Start & data
 - Dataset cards show source row count, missing cells, rare purchases and duplicate-looking records.
 - Historical CSV upload validates schema, types, range and outcome consistency, then shows group visit rates. Files stay in your browser. It does not train a model. Clear uploaded preview restores the source chart.
-- Budget and assumed email cost show affordable contact capacity for currently filtered customers. Example: $100 at $0.10 per email covers at most 1,000 people, capped by the number available. Costs are assumptions, not source data. No optimization is performed.
+- Budget and assumed email cost show affordable contact capacity for currently filtered customers. Example: $100 at $0.10 per email covers at most 1,000 people, capped by the number available. Costs are assumptions, not source data. This capacity preview is separate from the Week 3 Budget allocation page.
 - The EDA section expands to display spending, recency and response charts. Preprocessing text explains the actual transformations and split.
 
 ### Causal graph
@@ -207,7 +207,7 @@ A short demonstration script links to this detailed guide. The dashboard does no
 | Week 2 Plotly uplift/Qini | Saved evaluation, uncertainty table, interactive charts |
 | Mid-project causal audit | DoWhy refutations, separate hypothetical sensitivity scenarios, explicit warning |
 | Mid-project data load | 64,000 scores, filters, chart/table/export consistency, automated tests and browser review |
-| Week 3 optimization | Not implemented in this scope |
+| Week 3 optimization | Implemented: SciPy notebook and equal-cost allocation dashboard |
 | Week 4 API/drift | Not implemented in this scope |
 
 ## 11. A two-minute interview answer
@@ -225,3 +225,10 @@ Project requirements: the two supplied project images and EconoCausal Project Gu
 - Original study: https://blog.minethatdata.com/2008/03/minethatdata-e-mail-analytics-and-data.html
 - EconML: https://www.pywhy.org/EconML/_autosummary/econml.dml.CausalForestDML.html
 - DoWhy refutations: https://www.pywhy.org/dowhy/v0.9.1/user_guide/effect_inference/refute.html
+
+
+## Week 3 extension: turn scores into a budget plan
+
+Open **Budget allocation**. Set the budget and a common cost per email; choose all, test, training or new scored customers. The optimizer chooses Men’s Email, Women’s Email or No Email for each profile to maximize predicted extra spending. For $1 at $0.10 per email, at most ten people can be contacted. Every row shows its recommendation, cost and reason. The action/ID filters affect only the table view; the CSV includes all matching rows.
+
+Notebook 07 uses SciPy and checks the solution against an exact equal-cost calculation. The browser uses that same special-case rule for instant changes. These are predictions, not evidence of realized revenue or profit. Both spending ranking intervals include zero; the earlier women's visit subset warning remains. See [the Week 3 write-up](WEEK_3_WRITEUP.md) for assumptions, reproducibility and the Week 4 plan.

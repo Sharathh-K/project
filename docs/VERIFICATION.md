@@ -47,3 +47,14 @@ Using the Codex in-app browser at its narrow default viewport:
 The production Vite build succeeded. Plotly creates a large JavaScript bundle (about 5.1 MB before gzip); Vite reports a non-fatal chunk-size warning. The bundled 64,000-score CSV is about 13 MB. This is suitable for the requested local demonstration, not a claim of optimized production loading or a hosted enterprise service.
 
 No cloud deployment, always-on hosting, live model API, Week 3 optimization or Week 4 drift detection was performed. The browser preview requires a running local server. UI smoke checks were performed at the available narrow viewport, not across a complete device/browser matrix.
+
+
+## Week 3 verification
+
+- Notebook 07: all eight code cells executed successfully with SciPy 1.15.3; no saved error outputs. Full 64,000-row default solved with a certified optimal status and integral decisions, then matched the independent exact equal-cost objective.
+- Three Python unit tests pass, including eight randomly generated small problems checked against exhaustive enumeration of every possible action.
+- Fourteen Node tests pass, including the previous nine dashboard tests and five allocation tests. Four real-data fixtures (zero budget, test $100, test $1,000, all-row $5,000) reproduce SciPy objective values and selected IDs. Fixtures verify score and report fingerprints.
+- Production build passes. Plotly still produces a large-bundle advisory; no new runtime dependency was added.
+- Browser QA: 64,000-row default, zero budget, invalid zero cost, $1 budget selecting ten test customers, action filtering, page 2, no-result search and empty new-customer population verified.
+- Browser CSV download verified: all 20,748 Women’s Email recommendations were exported, rather than the 25 visible table rows.
+- The historical audit warning and spending uncertainty remain visible. An optimum on predicted revenue does not establish observed gains.

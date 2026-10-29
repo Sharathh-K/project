@@ -1,4 +1,4 @@
-# EconoCausal — Week 1, Week 2 and mid-project review
+# EconoCausal — Weeks 1–3 and mid-project review
 
 Causal analysis of the 64,000-row Hillstrom randomized email experiment. This repository estimates email effects; it does not contain observed discount amounts. Effects are estimates for similar customer profiles, not known personal counterfactuals.
 
@@ -45,6 +45,7 @@ Select this `.venv` as the notebook kernel, then run these notebooks in order:
 4. `04_propensity_matching.ipynb` — balance diagnostic.
 5. `05_double_ml.ipynb` — training and held-out evaluation.
 6. `06_mid_project_audit.ipynb` — consistency checks and repeated refutations.
+7. `07_budget_optimization.ipynb` — SciPy revenue allocation under a strict budget; see [Week 3 write-up](docs/WEEK_3_WRITEUP.md).
 
 Notebook 01 is now self-contained; it does not need the old `common.py`. Model and preprocessing files are generated locally. Old `data/processed/train.csv` files retained in the repository are not inputs to the revised notebooks 05/06. Do not mix model files from different runs. If you regenerate preprocessing, rerun 05 and 06.
 
@@ -56,12 +57,20 @@ From the repository root, with the Python environment activated:
 python dashboard/export_data.py
 ```
 
-Refresh the browser. If using the built preview, rebuild after exporting. The export validates source fingerprints and prepared-model inputs before copying the generated results. `dashboard/public/results/` contains the shareable demonstration snapshot; training artifacts stay under ignored `models/` and `results/` directories.
+After exporting notebooks 01–06, run notebook 07 to refresh the allocation snapshot, then refresh the browser. If using the built preview, rebuild after exporting. The export validates source fingerprints and prepared-model inputs before copying the generated results. `dashboard/public/results/` contains the shareable demonstration snapshot; training artifacts stay under ignored `models/` and `results/` directories.
 
 The Python export script is an operational bridge, not a duplicate notebook. It contains no training logic. Browser CSV uploads validate and preview data; they do not call a training service.
 
 ## Scope
 
-Included: EDA, preprocessing, graphs, matching, DML, uplift/Qini, DoWhy audit, historical uploads, budget planning, 64,000-score filtering, charts and exports. Not yet included: Week 3 optimal allocation, Week 4 REST API/drift detection, or live scoring/retraining of raw uploads.
+Included: EDA, preprocessing, graphs, matching, DML, uplift/Qini, DoWhy audit, historical uploads, budget planning, 64,000-score filtering, charts and exports. Week 3 adds SciPy allocation, equal-cost live planning, a customer allocation matrix, benchmark comparisons and CSV exports. Not yet included: Week 4 REST API/drift detection or live scoring/retraining of raw uploads.
 
 The audit refits smaller pairwise visit models. It cannot prove that hidden confounding is absent and does not refute every final-model ITE score. See [verification notes](docs/VERIFICATION.md) for the actual test evidence and limitations.
+
+## Week 3 quick start
+
+Open **Budget allocation**. The default is all 64,000 customer profiles, a $5,000 budget and an assumed $0.10 cost for either email. Edit these inputs to explore different plans. Zero budget selects nobody; No Email costs zero. Predictions are uncertain and all-row plans include training data. No discounts or realized profit are inferred.
+
+Notebook 07 can run directly on the committed audited dashboard snapshot. To use a new training run, export notebooks 01–06 first, then rerun 07. Its outputs are under `results/optimization/`, with a shareable default in `dashboard/public/results/`. The browser solves the equivalent equal-cost problem locally; a REST API belongs to Week 4.
+
+Read [Week 1](docs/WEEK_1_WRITEUP.md), [Week 2](docs/WEEK_2_WRITEUP.md), and [Week 3](docs/WEEK_3_WRITEUP.md) write-ups.
