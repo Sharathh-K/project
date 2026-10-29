@@ -1,0 +1,13 @@
+{
+  "COST": {
+    "Mens E-Mail": 0.1,
+    "Womens E-Mail": 0.15
+  },
+  "VALUE_PER_CONV": 113.82876889848812,
+  "BUDGET": 1600.0,
+  "BUDGET_SHARES": [
+    0.1,
+    0.25,
+    0.5
+  ]
+}
