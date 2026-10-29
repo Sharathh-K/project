@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Icon } from './Icon'
 import { runAnalysis } from './services/api'
 
@@ -213,6 +213,50 @@ export function CustomersPage() {
   )
 }
 
+export function AllocationPage() {
+  const [rows, setRows] = useState(null)
+  const [sum, setSum] = useState(null)
+  const [err, setErr] = useState('')
+  const [t, setT] = useState('all')
+  const [q, setQ] = useState('')
+  const [lim, setLim] = useState(100)
+  useEffect(() => {
+    Promise.all([
+      fetch('/prescription.csv').then((r) => { if (!r.ok) throw new Error('prescription.csv not found in app/public'); return r.text() }),
+      fetch('/prescription_summary.json').then((r) => { if (!r.ok) throw new Error('prescription_summary.json not found in app/public'); return r.json() }),
+    ])
+      .then(([txt, s]) => {
+        const [h, ...ls] = txt.trim().split(/\r?\n/)
+        const cols = h.split(',')
+        setRows(ls.map((l) => Object.fromEntries(l.split(',').map((v, i) => [cols[i], v]))))
+        setSum(s)
+      })
+      .catch((e) => setErr(e.message))
+  }, [])
+  if (err) return <><h1>Prescription</h1><Note kind="error">{err}</Note></>
+  if (!rows) return <><h1>Prescription</h1><p className="muted">Loading...</p></>
+  const shown = rows.filter((r) => (t === 'all' || r.discount === t) && r.customer_id.includes(q.trim()))
+  const money = (n) => '$' + Math.round(n).toLocaleString('en-US')
+  return (
+    <>
+      <h1>Prescription</h1>
+      <Note kind="ok">This strategy gains {money(sum.net_gain)} compared to {money(sum.blanket_gain)} for blanket targeting.</Note>
+      <div className="cols">
+        <Card title="Budget used"><p><b>{money(sum.spent)}</b> of {money(sum.budget)}</p></Card>
+        <Card title="Coupons"><p><b>{sum.coupons.toLocaleString('en-US')}</b> ({Object.entries(sum.by_type).map(([k, v]) => '$' + k + ': ' + v).join(', ')})</p></Card>
+        <Card title="Expected extra visits"><p><b>{sum.extra_visits.toFixed(1)}</b></p></Card>
+      </div>
+      <div className="row filters"><input aria-label="Search customer ID" placeholder="Search customer ID" value={q} onChange={(e) => setQ(e.target.value)} />
+        <select aria-label="Filter by coupon" value={t} onChange={(e) => setT(e.target.value)}><option value="all">All coupons</option>{Object.keys(sum.by_type).map((k) => <option key={k} value={k}>${k}</option>)}</select></div>
+      <div className="card scroll"><table><thead><tr><th>Customer ID</th><th>Email</th><th>Discount</th><th>Extra visit chance</th><th>Net gain</th></tr></thead>
+        <tbody>{shown.slice(0, lim).map((r) => <tr key={r.customer_id}><td>{r.customer_id}</td><td>{r.arm}</td><td>${r.discount}</td><td>{(r.expected_extra_visit * 100).toFixed(1)}%</td><td>${r.net_gain}</td></tr>)}</tbody></table>
+        {shown.length === 0 && <p className="muted pad">No customers match.</p>}
+        {shown.length > lim && <button className="btn" onClick={() => setLim(lim + 100)}>Show more</button>}</div>
+      <p className="muted">Assumption: {sum.assumption}. This plan was computed offline; live re-run comes with the Week 4 API.</p>
+    </>
+  )
+}
+
 export function InsightsPage({ plan }) {
   const bars = [['$1', 20], ['$2', 35], ['$5', 60], ['$10', 25]]
   return (
@@ -235,45 +279,6 @@ export function SettingsPage({ compact, setCompact, reset }) {
       <Card title="Reset"><p className="muted">Clears the selected file, the discount plan and the dataset choice. Frontend only.</p><button className="btn" onClick={() => setAsk(true)}>Reset everything</button></Card>
       {ask && <Modal title="Reset everything?" onClose={() => setAsk(false)}><p>This clears your file and plan in this browser tab.</p>
         <button className="btn primary" onClick={() => { reset(); setAsk(false) }}>Yes, reset</button></Modal>}
-    </>
-  )
-}
-export function AllocationPage() {
-  const [rows, setRows] = useState(null)
-  const [sum, setSum] = useState(null)
-  const [err, setErr] = useState('')
-  const [t, setT] = useState('all')
-  const [q, setQ] = useState('')
-  const [lim, setLim] = useState(100)
-  useEffect(() => {
-    Promise.all([fetch('/prescription.csv').then((r) => { if (!r.ok) throw new Error('prescription.csv not found'); return r.text() }),
-      fetch('/prescription_summary.json').then((r) => r.json())])
-      .then(([txt, s]) => {
-        const [h, ...ls] = txt.trim().split(/\r?\n/)
-        const cols = h.split(',')
-        setRows(ls.map((l) => Object.fromEntries(l.split(',').map((v, i) => [cols[i], v]))))
-        setSum(s)
-      }).catch((e) => setErr(e.message))
-  }, [])
-  if (err) return <><h1>Prescription</h1><Note kind="error">{err}</Note></>
-  if (!rows) return <><h1>Prescription</h1><p className="muted">Loading...</p></>
-  const shown = rows.filter((r) => (t === 'all' || r.discount === t) && r.customer_id.includes(q.trim()))
-  const money = (n) => '$' + Math.round(n).toLocaleString('en-US')
-  return (
-    <>
-      <h1>Prescription</h1>
-      <Note kind="ok">This strategy gains {money(sum.net_gain)} compared to {money(sum.blanket_gain)} for blanket targeting.</Note>
-      <div className="cols">
-        <Card title="Budget used"><p><b>{money(sum.spent)}</b> of {money(sum.budget)}</p></Card>
-        <Card title="Coupons"><p><b>{sum.coupons.toLocaleString('en-US')}</b> ({Object.entries(sum.by_type).map(([k, v]) => '$' + k + ': ' + v).join(', ')})</p></Card>
-        <Card title="Expected extra visits"><p><b>{sum.extra_visits.toFixed(1)}</b></p></Card>
-      </div>
-      <div className="row filters"><input aria-label="Search customer ID" placeholder="Search customer ID" value={q} onChange={(e) => setQ(e.target.value)} />
-        <select aria-label="Filter by coupon" value={t} onChange={(e) => setT(e.target.value)}><option value="all">All coupons</option>{Object.keys(sum.by_type).map((k) => <option key={k} value={k}>${k}</option>)}</select></div>
-      <div className="card scroll"><table><thead><tr><th>Customer ID</th><th>Email</th><th>Discount</th><th>Extra visit chance</th><th>Net gain</th></tr></thead>
-        <tbody>{shown.slice(0, lim).map((r) => <tr key={r.customer_id}><td>{r.customer_id}</td><td>{r.arm}</td><td>${r.discount}</td><td>{(r.expected_extra_visit * 100).toFixed(1)}%</td><td>${r.net_gain}</td></tr>)}</tbody></table>
-        {shown.length > lim && <button className="btn" onClick={() => setLim(lim + 100)}>Show more</button>}</div>
-      <p className="muted">Assumption: {sum.assumption}. Plan shown was run offline; live re-run comes with the Week 4 API.</p>
     </>
   )
 }
