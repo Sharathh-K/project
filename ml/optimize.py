@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from scipy.optimize import milp, LinearConstraint, Bounds
-from scipy.sparse import identity, kron, csr_matrix, vstack
+from scipy.sparse import identity, kron, csr_matrix
 
 IN_PATH = Path("EconoCausal/results/ite_results_visit.csv")
 OUT_DIR = Path("EconoCausal/results")
@@ -54,11 +54,12 @@ def main():
     out = pd.DataFrame({
         "customer_id": pool.loc[take, "customer_id"].values,
         "arm": pool.loc[take, "arm"].values,
-        "discount": types[j],
+        "discount": types[j].astype(int),
         "ite": pool.loc[take, "ite_pred"].values.round(4),
         "expected_extra_visit": uplift[take, j].round(4),
         "net_gain": gain[take, j].round(2),
     }).sort_values("net_gain", ascending=False)
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
     out.to_csv(OUT_DIR / "prescription.csv", index=False)
 
     # baseline: blanket targeting, same budget, biggest coupon, random customers
