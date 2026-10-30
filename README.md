@@ -1,4 +1,4 @@
-# EconoCausal — Weeks 1–3 and mid-project review
+# EconoCausal — Weeks 1–4 and mid-project review
 
 Causal analysis of the 64,000-row Hillstrom randomized email experiment. This repository estimates email effects; it does not contain observed discount amounts. Effects are estimates for similar customer profiles, not known personal counterfactuals.
 
@@ -46,6 +46,7 @@ Select this `.venv` as the notebook kernel, then run these notebooks in order:
 5. `05_double_ml.ipynb` — training and held-out evaluation.
 6. `06_mid_project_audit.ipynb` — consistency checks and repeated refutations.
 7. `07_budget_optimization.ipynb` — SciPy revenue allocation under a strict budget; see [Week 3 write-up](docs/WEEK_3_WRITEUP.md).
+8. `08_api_drift_packaging.ipynb` — real-model API checks, automatic drift screening, budget checks and packaging.
 
 Notebook 01 is now self-contained; it does not need the old `common.py`. Model and preprocessing files are generated locally. Old `data/processed/train.csv` files retained in the repository are not inputs to the revised notebooks 05/06. Do not mix model files from different runs. If you regenerate preprocessing, rerun 05 and 06.
 
@@ -63,7 +64,7 @@ The Python export script is an operational bridge, not a duplicate notebook. It 
 
 ## Scope
 
-Included: EDA, preprocessing, graphs, matching, DML, uplift/Qini, DoWhy audit, historical uploads, budget planning, 64,000-score filtering, charts and exports. Week 3 adds SciPy allocation, equal-cost live planning, a customer allocation matrix, benchmark comparisons and CSV exports. Not yet included: Week 4 REST API/drift detection or live scoring/retraining of raw uploads.
+Included: EDA, preprocessing, graphs, matching, DML, uplift/Qini, DoWhy audit, historical uploads, budget planning, 64,000-score filtering, charts and exports. Week 3 adds SciPy allocation, equal-cost live planning, a customer allocation matrix, benchmark comparisons and CSV exports. Week 4 adds a REST API, automatic baseline drift screening, live new-customer scoring and a downloadable campaign plan. Automatic retraining and public production hosting are outside this local demonstration.
 
 The audit refits smaller pairwise visit models. It cannot prove that hidden confounding is absent and does not refute every final-model ITE score. See [verification notes](docs/VERIFICATION.md) for the actual test evidence and limitations.
 
@@ -74,3 +75,11 @@ Open **Budget allocation**. The default is all 64,000 customer profiles, a $5,00
 Notebook 07 can run directly on the committed audited dashboard snapshot. To use a new training run, export notebooks 01–06 first, then rerun 07. Its outputs are under `results/optimization/`, with a shareable default in `dashboard/public/results/`. The browser solves the equivalent equal-cost problem locally; a REST API belongs to Week 4.
 
 Read [Week 1](docs/WEEK_1_WRITEUP.md), [Week 2](docs/WEEK_2_WRITEUP.md), and [Week 3](docs/WEEK_3_WRITEUP.md) write-ups.
+
+## Week 4: live API and drift screening
+
+Continue with **08_api_drift_packaging.ipynb** after Week 3. See [Week 4 setup and walkthrough](docs/WEEK_4_WRITEUP.md) and [API reference](docs/API_REFERENCE.md).
+
+The new **Live scoring & drift** page calls trained models, automatically checks incoming characteristics, and generates a budget-constrained plan. Build the dashboard and run `python -m uvicorn api.main:app --host 127.0.0.1 --port 8002`; open http://127.0.0.1:8002/ . Run notebooks 02 and 05 first if model artifacts are absent. API source lives in `api/`; these operational modules are shared by notebooks rather than duplicate numbered scripts.
+
+Validation: `python -m unittest discover -s tests -p 'test_week*.py'`, then `cd dashboard && pnpm test && pnpm build`. Notebook 08 adds real-model prediction parity checks and saves `results/week4/verification.json`.

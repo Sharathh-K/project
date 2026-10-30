@@ -1,0 +1,32 @@
+{
+  "model_id": "c5b6e25bcf2cc60a008bbb3c004e21d3394cb6227078a564d3a66b3e0cf56867",
+  "reference_rows": 44800,
+  "prediction_parity_errors": {
+    "visit_mens": 1.5265566588595902e-16,
+    "visit_womens": 1.8041124150158794e-16,
+    "conversion_mens": 9.8879238130678e-17,
+    "conversion_womens": 9.90960785651751e-17,
+    "spend_mens": 1.7763568394002505e-15,
+    "spend_womens": 1.5543122344752192e-15
+  },
+  "unchanged_drift": "no_warning",
+  "shifted_drift": "review",
+  "small_batch": "insufficient_data",
+  "campaign": {
+    "customers": 200,
+    "budget": 1.0,
+    "email_cost": 0.1,
+    "contacted": 10,
+    "mens": 9,
+    "womens": 1,
+    "no_email": 190,
+    "allocated_cost": 1.0,
+    "unused_budget": 0.0,
+    "predicted_incremental_revenue": 22.82197489567187,
+    "predicted_revenue_less_email_cost": 21.82197489567187,
+    "solver_status": "optimal",
+    "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+    "optimality_gap": 0.0
+  },
+  "validation_checks": "passed"
+}

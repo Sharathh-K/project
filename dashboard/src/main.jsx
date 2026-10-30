@@ -11,6 +11,7 @@ import {
 } from "./analysis.mjs";
 import "./style.css";
 import Allocation from "./Allocation.jsx";
+import LiveCampaign from "./LiveCampaign.jsx";
 
 const format = (n) =>
   new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(n);
@@ -211,7 +212,7 @@ function App() {
         <div className="brand">
           <span>E</span>EconoCausal
         </div>
-        <p className="caption">WEEKS 1–3 · ALLOCATION</p>
+        <p className="caption">WEEKS 1–4 · LIVE CAMPAIGNS</p>
         <nav>
           {[
             "Start & data",
@@ -220,6 +221,7 @@ function App() {
             "Uplift evidence",
             "Causal audit",
             "Budget allocation",
+            "Live scoring & drift",
             "How to use",
           ].map((t) => (
             <button
@@ -914,6 +916,7 @@ function App() {
                 ))}
               </>
             )}
+            {tab === "Live scoring & drift" && <LiveCampaign bundled={bundled} budget={budget} setBudget={setBudget} cost={cost} setCost={setCost}/>}
             {tab === "Budget allocation" && <Allocation scores={scores} source={source} budget={budget} setBudget={setBudget} cost={cost} setCost={setCost} Chart={Chart} Metric={Metric}/> }
             {tab === "How to use" && (
               <section className="card">
@@ -977,7 +980,7 @@ function App() {
           </>
         )}
         <footer>
-          Week 1 · Week 2 · Mid-project review · Week 3 — Python, DoWhy, EconML, React
+          Week 1 · Week 2 · Mid-project review · Week 3 · Week 4 — Python, DoWhy, EconML, React
           and Plotly
         </footer>
       </main>
