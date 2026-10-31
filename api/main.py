@@ -13,7 +13,7 @@ from api.optimization import allocate_email, cents
 
 class Customer(BaseModel):
     """Only information available before sending the campaign is allowed."""
-    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False, str_strip_whitespace=True)
     customer_id: str = Field(min_length=1, max_length=100)
     recency: int = Field(ge=1, le=12)
     history: float = Field(ge=0)
@@ -25,7 +25,7 @@ class Customer(BaseModel):
 
 
 class Batch(BaseModel):
-    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False, str_strip_whitespace=True)
     customers: list[Customer] = Field(min_length=1, max_length=5000)
 
     @model_validator(mode="after")
@@ -46,7 +46,7 @@ def get_engine():
     """Load the trusted local models once, then reuse them across requests."""
     try:
         return Engine()
-    except (FileNotFoundError, ValueError) as exc:
+    except (OSError, ValueError, KeyError, EOFError) as exc:
         raise HTTPException(503, str(exc)) from exc
 
 
@@ -70,6 +70,7 @@ def model():
         "model_id": engine.model_id,
         "training_rows": len(engine.reference),
         "max_batch_rows": 5000,
+        "model_load_prediction_errors": engine.validation_errors,
         "actions": ["No E-Mail", "Mens E-Mail", "Womens E-Mail"],
     }
 
@@ -82,7 +83,10 @@ def check_drift(body: Batch):
 
 @app.post("/api/score")
 def score(body: Batch):
-    return get_engine().score([customer.model_dump() for customer in body.customers])
+    try:
+        return get_engine().score([customer.model_dump() for customer in body.customers])
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @app.post("/api/recommend")

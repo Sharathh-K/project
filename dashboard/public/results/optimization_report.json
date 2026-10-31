@@ -15,7 +15,7 @@
     "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
     "optimality_gap": 0.0,
     "population": "all",
-    "elapsed_seconds": 3.500456915702671
+    "elapsed_seconds": 3.7557373326271772
   },
   "benchmarks": [
     {

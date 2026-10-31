@@ -1,14 +1,10 @@
 import React, { useState } from "react";
 import Papa from "papaparse";
-const fields = [
-  "recency",
-  "history",
-  "mens",
-  "womens",
-  "newbie",
-  "zip_code",
-  "channel",
-];
+import {
+  baselineFields as fields,
+  baselineRows,
+  parseLiveCSV,
+} from "./live-data.mjs";
 export default function LiveCampaign({
   bundled,
   budget,
@@ -21,16 +17,7 @@ export default function LiveCampaign({
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   function load(data) {
-    if (!data.length || data.length > 5000)
-      throw Error("Choose 1–5,000 customers.");
-    setRows(
-      data.map((r, i) =>
-        Object.fromEntries([
-          ["customer_id", String(r.customer_id ?? `upload_${i}`)],
-          ...fields.map((f) => [f, r[f]]),
-        ]),
-      ),
-    );
+    setRows(baselineRows(data));
     setResult(null);
     setError("");
   }
@@ -39,13 +26,7 @@ export default function LiveCampaign({
       const f = e.target.files[0];
       if (!f) return;
       if (f.size > 5e6) throw Error("Maximum upload size is 5 MB.");
-      const p = Papa.parse(await f.text(), {
-        header: true,
-        dynamicTyping: true,
-        skipEmptyLines: "greedy",
-      });
-      if (p.errors.length) throw Error(p.errors[0].message);
-      load(p.data);
+      load(parseLiveCSV(await f.text()));
     } catch (e) {
       setRows([]);
       setResult(null);
@@ -132,7 +113,10 @@ export default function LiveCampaign({
           step="0.01"
           disabled={busy}
           value={budget}
-          onChange={(e) => {setBudget(e.target.value); setResult(null);}}
+          onChange={(e) => {
+            setBudget(e.target.value);
+            setResult(null);
+          }}
         />
       </label>{" "}
       <label>
@@ -143,7 +127,10 @@ export default function LiveCampaign({
           step="0.01"
           disabled={busy}
           value={cost}
-          onChange={(e) => {setCost(e.target.value); setResult(null);}}
+          onChange={(e) => {
+            setCost(e.target.value);
+            setResult(null);
+          }}
         />
       </label>
       <p>

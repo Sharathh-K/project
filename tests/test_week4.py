@@ -45,4 +45,22 @@ class Week4Tests(unittest.TestCase):
             self.assertEqual(result.json()['allocation']['allocated_cost'],.1)
             bad=self.client.post('/api/recommend',json={'customers':[ROW],'budget':.001})
             self.assertEqual(bad.status_code,422)
-if __name__=='__main__': unittest.main()
+
+class ModelConsistencyTests(unittest.TestCase):
+    def test_changed_model_and_nonfinite_predictions_are_rejected(self):
+        from api.service import verify_predictions
+        class Encoder:
+            def get_feature_names_out(self): return ['x']
+        class Model:
+            def __init__(self,value): self.value=value
+            def effect(self,x,T0,T1): return np.full(len(x),self.value)
+        bundle={'encoder':Encoder(),'encoded_features':['x'],
+                'models':{name:Model(1.) for name in ['visit','conversion','spend']}}
+        test=pd.DataFrame({'customer_id':['a','b'],'x':[0,1]})
+        saved=pd.DataFrame({'customer_id':['a','b'],**{f'{y}_{a}':[1.,1.] for y in bundle['models'] for a in ['mens','womens']}})
+        self.assertEqual(max(verify_predictions(bundle,test,saved).values()),0)
+        for changed in [2.,np.nan]:
+            bundle['models']['spend']=Model(changed)
+            with self.assertRaises(ValueError): verify_predictions(bundle,test,saved)
+
+if __name__=="__main__": unittest.main()

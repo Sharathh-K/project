@@ -1,6 +1,6 @@
 # EconoCausal: from the dataset to the mid-project review
 
-This guide describes notebooks 01–07 and the React dashboard through Week 3. Week 4 APIs and drift detection remain future work.
+This guide describes notebooks 01–08 and the React dashboard through Week 4, including the local REST API, automatic drift screening and budget allocation.
 
 ## 1. The business question
 
@@ -193,7 +193,7 @@ The interface uses React and Plotly.js with the verified notebook outputs. It bu
 - Stress charts show assumed scenarios on a separate linear model. They do not show discovered confounders.
 
 ### How to use
-A short demonstration script links to this detailed guide. The dashboard does not contain a production API, live retraining service, optimal allocation, or drift detector at this stage.
+A short demonstration script links to this detailed guide. The dashboard includes the Week 3 optimizer and Week 4 live API/drift page. It is a local demonstration; public production hosting and automatic retraining are not configured.
 
 ## 10. Requirement map and honest status
 
@@ -208,7 +208,7 @@ A short demonstration script links to this detailed guide. The dashboard does no
 | Mid-project causal audit | DoWhy refutations, separate hypothetical sensitivity scenarios, explicit warning |
 | Mid-project data load | 64,000 scores, filters, chart/table/export consistency, automated tests and browser review |
 | Week 3 optimization | Implemented: SciPy notebook and equal-cost allocation dashboard |
-| Week 4 API/drift | Not implemented in this scope |
+| Week 4 API/drift | FastAPI scoring and recommendations, automatic baseline drift checks, notebook 08 and live dashboard |
 
 ## 11. A two-minute interview answer
 
@@ -232,3 +232,16 @@ Project requirements: the two supplied project images and EconoCausal Project Gu
 Open **Budget allocation**. Set the budget and a common cost per email; choose all, test, training or new scored customers. The optimizer chooses Men’s Email, Women’s Email or No Email for each profile to maximize predicted extra spending. For $1 at $0.10 per email, at most ten people can be contacted. Every row shows its recommendation, cost and reason. The action/ID filters affect only the table view; the CSV includes all matching rows.
 
 Notebook 07 uses SciPy and checks the solution against an exact equal-cost calculation. The browser uses that same special-case rule for instant changes. These are predictions, not evidence of realized revenue or profit. Both spending ranking intervals include zero; the earlier women's visit subset warning remains. See [the Week 3 write-up](WEEK_3_WRITEUP.md) for assumptions, reproducibility and the Week 4 plan.
+
+
+## Week 4 extension: use the trained models through an API
+
+Open **Live scoring & drift**, load sample customers or upload their baseline characteristics, set a budget and equal cost per email, and run the check. The API validates inputs, uses the saved encoder and three outcome models, compares the incoming population with the training population, and runs the shared SciPy optimizer. Download contains the complete recommendation table.
+
+For example, $1 at $0.10 per email allows ten emails. A summary reports planned contact cost and predicted incremental revenue. Contact-cost avoidance versus emailing everyone is not realized profit, and the example $4,200 in the project brief is not a required result to manufacture.
+
+The drift check uses baseline-distribution distances. A flagged change asks for investigation; it does not prove the treatment effect changed. Batches smaller than 100 are labelled insufficient data. The previous causal-audit and spending-ranking limitations still apply.
+
+**Viva closing:** “I packaged my trained causal models in FastAPI, added automatic drift screening, and connected them to a React dashboard. The app turns customer characteristics into a budget-respecting email plan while showing uncertainty and warnings.”
+
+**Evaluation qualification:** full-data descriptive EDA preceded the fixed train/test model analysis. The holdout was excluded from fitting and tuning, but not from every descriptive inspection. Results are exploratory; a new randomized campaign is the stronger confirmation.

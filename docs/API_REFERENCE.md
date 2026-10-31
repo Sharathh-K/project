@@ -24,7 +24,7 @@ Example body for `/api/recommend`:
 
 For `/api/score` or `/api/drift`, omit budget and email_cost. Batches contain 1–5,000 unique customer IDs. History must be finite and nonnegative, recency an integer 1–12, and the three flags 0 or 1. Extra JSON fields, including post-campaign outcomes, are rejected. Categories unseen during training are accepted by the fitted encoder but flagged in drift screening. `Surburban` is normalized to `Suburban`.
 
-Responses include rows and drift; recommendations also include allocation totals and a plain summary. Visit/conversion effects are probability differences (multiply by 100 for percentage points); spend effects are dollars. The model fingerprint identifies the exact trusted local bundle. The API never accepts uploaded pickle/joblib models and never persists customer requests.
+Responses include rows and drift; recommendations also include allocation totals and a plain summary. Visit/conversion effects are probability differences (multiply by 100 for percentage points); spend effects are dollars. The model fingerprint identifies the exact trusted local bundle. At first model load, the service also checks the raw-data hash and reproduces six saved effects on 32 held-out rows before serving the model; `/api/model` reports the maximum differences. The API never accepts uploaded pickle/joblib models and never persists customer requests.
 
 422 means invalid input; 503 means missing artifacts or unsuccessful optimization. Restart the API after rebuilding model artifacts; it caches the model in memory. No automatic model retraining occurs.
 

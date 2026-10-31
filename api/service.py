@@ -37,12 +37,36 @@ def drift(reference, current):
     return dict(status=status, reference_rows=len(reference), incoming_rows=len(current), metrics=metrics,
                 explanation='Compare pre-campaign characteristics with training customers. Threshold 0.1 is a screening rule, not proof that causal effects changed. Fewer than 100 rows cannot give a reliable batch check.')
 
+def verify_predictions(bundle, test, saved):
+    """Catch an accidentally swapped model using saved holdout predictions."""
+    if set(bundle['models']) != {'visit', 'conversion', 'spend'}:
+        raise ValueError('Expected all three outcome models. Re-run notebook 05.')
+    if list(bundle['encoder'].get_feature_names_out()) != bundle['encoded_features']:
+        raise ValueError('Model encoder and encoded feature order differ.')
+    saved = saved.set_index('customer_id').loc[test.customer_id]
+    x = test[bundle['encoded_features']].to_numpy()
+    errors = {}
+    for outcome, model in bundle['models'].items():
+        for arm, label in [(1, 'mens'), (2, 'womens')]:
+            name = f'{outcome}_{label}'
+            prediction = np.asarray(model.effect(x, T0=0, T1=arm)).ravel()
+            expected = saved[name].to_numpy()
+            if prediction.shape != expected.shape or not np.isfinite(prediction).all():
+                raise ValueError(f'Invalid model predictions: {name}. Re-run notebook 05.')
+            errors[name] = float(np.max(np.abs(prediction - expected)))
+            if not np.isfinite(errors[name]) or errors[name] >= 1e-9:
+                raise ValueError(f'Model disagrees with saved predictions: {name}. Re-run notebook 05.')
+    return errors
+
+
 class Engine:
     def __init__(self, root=ROOT):
         path = root/'models/double_ml/double_ml_bundle.joblib'
         if not path.exists():
             raise FileNotFoundError('Run notebooks 02 and 05 before starting the API.')
         info = json.loads((root/'results/double_ml/model_info.json').read_text())
+        if hashlib.sha256((root/'data/raw/hillstrom.csv').read_bytes()).hexdigest() != info['raw_sha256']:
+            raise ValueError('Raw data changed. Re-run the analysis before scoring.')
         for name, expected in info['input_sha256'].items():
             if hashlib.sha256((root/name).read_bytes()).hexdigest() != expected:
                 raise ValueError(f'Training artifact changed: {name}. Re-run notebooks 02 and 05 together.')
@@ -51,6 +75,9 @@ class Engine:
                 raise ValueError(f'{package} version differs from training. Use the training environment or retrain.')
         # Only a trusted local artifact is loaded. The API never accepts model files.
         self.bundle = joblib.load(path)
+        test = pd.read_csv(root/'data/processed/causal_test.csv').sort_values('customer_id').head(32)
+        saved = pd.read_csv(root/'results/double_ml/test_scores.csv')
+        self.validation_errors = verify_predictions(self.bundle, test, saved)
         self.model_id = hashlib.sha256(path.read_bytes()).hexdigest()
         clean = pd.read_csv(root/'data/processed/causal_clean.csv')
         train = pd.read_csv(root/'data/processed/causal_train.csv')
@@ -63,6 +90,9 @@ class Engine:
         for outcome, model in self.bundle['models'].items():
             for arm, label in [(1,'mens'),(2,'womens')]:
                 frame[f'{outcome}_{label}'] = np.asarray(model.effect(x,T0=0,T1=arm)).ravel()
+        effect_columns = [f'{outcome}_{arm}' for outcome in self.bundle['models'] for arm in ['mens','womens']]
+        if not np.isfinite(frame[effect_columns].to_numpy()).all():
+            raise ValueError('The model returned non-finite effects. Do not use these recommendations.')
         frame['split'] = 'new'
         return dict(model_id=self.model_id, rows=frame.to_dict('records'), drift=drift(self.reference,frame),
                     warning='These are estimated effects for customer profiles, not guaranteed individual outcomes. Spending rankings remain uncertain; review the causal audit before a real campaign.')

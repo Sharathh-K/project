@@ -60,7 +60,7 @@ python dashboard/export_data.py
 
 After exporting notebooks 01–06, run notebook 07 to refresh the allocation snapshot, then refresh the browser. If using the built preview, rebuild after exporting. The export validates source fingerprints and prepared-model inputs before copying the generated results. `dashboard/public/results/` contains the shareable demonstration snapshot; training artifacts stay under ignored `models/` and `results/` directories.
 
-The Python export script is an operational bridge, not a duplicate notebook. It contains no training logic. Browser CSV uploads validate and preview data; they do not call a training service.
+The Python export script is an operational bridge, not a duplicate notebook. It contains no training logic. The historical upload previews campaign data. The separate Live scoring & drift upload calls the inference API; neither upload retrains the models.
 
 ## Scope
 
@@ -72,7 +72,7 @@ The audit refits smaller pairwise visit models. It cannot prove that hidden conf
 
 Open **Budget allocation**. The default is all 64,000 customer profiles, a $5,000 budget and an assumed $0.10 cost for either email. Edit these inputs to explore different plans. Zero budget selects nobody; No Email costs zero. Predictions are uncertain and all-row plans include training data. No discounts or realized profit are inferred.
 
-Notebook 07 can run directly on the committed audited dashboard snapshot. To use a new training run, export notebooks 01–06 first, then rerun 07. Its outputs are under `results/optimization/`, with a shareable default in `dashboard/public/results/`. The browser solves the equivalent equal-cost problem locally; a REST API belongs to Week 4.
+Notebook 07 can run directly on the committed audited dashboard snapshot. To use a new training run, export notebooks 01–06 first, then rerun 07. Its outputs are under `results/optimization/`, with a shareable default in `dashboard/public/results/`. The browser solves the equivalent equal-cost problem locally; the Week 4 REST API uses the same Python optimizer.
 
 Read [Week 1](docs/WEEK_1_WRITEUP.md), [Week 2](docs/WEEK_2_WRITEUP.md), and [Week 3](docs/WEEK_3_WRITEUP.md) write-ups.
 
@@ -82,4 +82,8 @@ Continue with **08_api_drift_packaging.ipynb** after Week 3. See [Week 4 setup a
 
 The new **Live scoring & drift** page calls trained models, automatically checks incoming characteristics, and generates a budget-constrained plan. Build the dashboard and run `python -m uvicorn api.main:app --host 127.0.0.1 --port 8002`; open http://127.0.0.1:8002/ . Run notebooks 02 and 05 first if model artifacts are absent. API source lives in `api/`; these operational modules are shared by notebooks rather than duplicate numbered scripts.
 
-Validation: `python -m unittest discover -s tests -p 'test_week*.py'`, then `cd dashboard && pnpm test && pnpm build`. Notebook 08 adds real-model prediction parity checks and saves `results/week4/verification.json`.
+Validation: `python -m unittest discover -s tests`, then `cd dashboard && pnpm test && pnpm build`. Notebook 08 adds real-model prediction parity checks and saves `results/week4/verification.json`.
+
+## Final resource review
+
+See [the full requirement and evidence review](docs/FINAL_RESOURCE_REVIEW.md) for the dataset check, week-by-week coverage, corrections and remaining statistical limitations. Descriptive EDA uses the full dataset; the model holdout is excluded from fitting, but findings remain exploratory.

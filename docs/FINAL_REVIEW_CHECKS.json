@@ -1,0 +1,64 @@
+{
+  "test_rows": 19200,
+  "errors": {
+    "visit_mens": 2.220446049250313e-16,
+    "visit_womens": 2.220446049250313e-16,
+    "conversion_mens": 1.1275702593849246e-16,
+    "conversion_womens": 1.1275702593849246e-16,
+    "spend_mens": 4.6629367034256575e-15,
+    "spend_womens": 4.440892098500626e-15
+  },
+  "date": "2026-10-31",
+  "source_sha256": "0e5893329d8b93cefecc571777672028290ab69865718020c78c7284f291aece",
+  "source_equal_to_uploaded_K_csv": true,
+  "notebooks_executed": [
+    "01",
+    "03",
+    "04",
+    "07",
+    "08"
+  ],
+  "python_tests_passed": 10,
+  "dashboard_tests_passed": 16,
+  "week4_checks": {
+    "model_id": "c5b6e25bcf2cc60a008bbb3c004e21d3394cb6227078a564d3a66b3e0cf56867",
+    "reference_rows": 44800,
+    "prediction_parity_errors": {
+      "visit_mens": 1.3877787807814457e-16,
+      "visit_womens": 1.6653345369377348e-16,
+      "conversion_mens": 1.0495077029659683e-16,
+      "conversion_womens": 1.0148132334464322e-16,
+      "spend_mens": 2.886579864025407e-15,
+      "spend_womens": 1.9984014443252818e-15
+    },
+    "unchanged_drift": "no_warning",
+    "shifted_drift": "review",
+    "small_batch": "insufficient_data",
+    "campaign": {
+      "customers": 200,
+      "budget": 1.0,
+      "email_cost": 0.1,
+      "contacted": 10,
+      "mens": 9,
+      "womens": 1,
+      "no_email": 190,
+      "allocated_cost": 1.0,
+      "unused_budget": 0.0,
+      "predicted_incremental_revenue": 22.82197489567188,
+      "predicted_revenue_less_email_cost": 21.82197489567188,
+      "solver_status": "optimal",
+      "solver_message": "Optimization terminated successfully. (HiGHS Status 7: Optimal)",
+      "optimality_gap": 0.0
+    },
+    "validation_checks": "passed"
+  },
+  "production_build": "passed",
+  "browser_check": {
+    "customers": 1000,
+    "budget": 1,
+    "email_cost": 0.1,
+    "contacted": 10,
+    "allocated_cost": 1,
+    "status": "passed"
+  }
+}
