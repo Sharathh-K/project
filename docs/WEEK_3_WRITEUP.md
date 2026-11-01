@@ -1,60 +1,130 @@
-# Week 3 — Prescriptive optimization and allocation matrix
+# Week 3 Write-up — Budget Optimization and Customer Allocation
 
-## What the brief asks for
+**Project:** EconoCausal: Dynamic Pricing via Double Machine Learning
 
-The Week 3 pictures ask for a SciPy solver that maximizes predicted revenue within a strict budget and a customer allocation table. The supplied EconoCausal guide (section 6) explicitly maps discounts to email actions for Hillstrom and asks us to assume a cost per email. Consequently the actions here are Men’s Email, Women’s Email and No Email. No invented $10/$20 discount effects are used.
+**Week 3 focus:** Prescriptive optimization with SciPy and an allocation matrix in the React dashboard
 
-## What we built and why
+**Continuation:** `06_mid_project_audit.ipynb` → `07_budget_optimization.ipynb`
 
-Notebook `07_budget_optimization.ipynb` continues after the audit. It reads the audited score snapshot, checks raw-data identity, records input hashes, optimizes spending-effect estimates, compares planning strategies, explores budgets and costs, and exports recommendations.
+## 1. Objective from the project pictures
 
-We maximize predicted incremental revenue because the Week 3 objective is revenue. Visit uplift is not converted to dollars: the separate spending model supplies the dollar effects. Both spending rankings were uncertain on held-out data, so all results remain experimental planning predictions.
+The Week 3 plan asks us to maximize predicted revenue within a strict marketing budget and build a table showing the recommended offer for each customer.
 
-For each customer, choose the better of the two predicted email effects. If neither is positive, choose No Email. With one common email cost, the budget is an integer contact limit. SciPy `linprog` with HiGHS interior-point and crossover solves the bounded cardinality problem. Its integral vertices permit whole-customer solutions; we explicitly verify 0/1 values and compare the objective with an independent exact top-K rule. This special-case proof does not extend to unequal costs or additional constraints.
+The supplied Hillstrom dataset contains men's email, women's email and no-email assignments. It does not contain discount amounts. Following section 6 of the supplied project guide, we therefore use email as the action and assign an explicit, editable cost per email. We do not invent effects for $10 or $20 discounts.
 
-Budgets and costs use integer cents. Zero budget selects nobody, invalid costs are rejected, each customer receives at most one action, and unused budget is allowed. Stable tie handling chooses Men’s Email for equal action effects and then source-row ID for tied customers.
+**In simple words:** Week 2 estimated how much an email might help. Week 3 decides whom to contact and which email to recommend when the shop has limited money.
 
-## Simple example
+## 2. Work completed
 
-A has predicted effects $0.80 for Men’s Email and $0.30 for Women’s Email. B has $0.20 and $0.90. C has negative effects. D has $0.40 and $0.10. At $0.10 per email with a $0.20 budget, choose A’s Men’s Email and B’s Women’s Email. The predicted extra revenue is $1.70 and the assumed cost is $0.20. These are illustrative effects, not measured campaign returns.
+### A. Continued from the existing causal analysis
 
-## Dashboard: Budget allocation
+Created `07_budget_optimization.ipynb` to use the saved customer-effect scores and audit evidence from the earlier work. The notebook checks source-data identity and records the score and report fingerprints so the allocation can be traced to its inputs.
 
-- Budget and cost per email: editable assumptions, shared with Start & data.
-- Allocation population: all loaded, test, training or new scored customers. Other Customer scores filters do not silently alter the allocation.
-- Summary: contacts, spend, remaining budget, predicted extra revenue, and revenue less email cost.
-- Allocation chart: counts of Men’s Email, Women’s Email and No Email recommendations.
-- Strategy comparison: optimized, equal-contact random targeting, no email, and blanket email choices. Over-budget blanket strategies are marked infeasible.
-- Allocation matrix: every customer’s action, cost, predicted benefit and reason. Action/ID filters only filter the view, not the budget decision.
-- CSV export: all rows matching the table filters, not only the current page.
+The optimizer uses the predicted effects on **spending**, because its objective is additional revenue. Visit probabilities are not converted into dollars. The earlier audit and uncertainty warnings remain relevant.
 
-The browser uses the independently tested exact equal-cost rule for live updates. It does not call SciPy or an API in the browser. The Python notebook is the SciPy reference implementation. Browser tests compare its decisions against executed SciPy outputs, including all 64,000 rows.
+### B. Implemented the SciPy budget optimizer
 
-## What the results mean
+For each customer, the available decisions are:
 
-A model-based optimizer will normally outperform random selection on the same predictions it maximizes. That comparison is a planning benchmark, not an independent causal evaluation. The Week 2 held-out uplift evidence and the Week 2 audit warnings remain unchanged. All-row plans contain training customers and are retrospective demonstrations.
+- Recommend Men's Email.
+- Recommend Women's Email.
+- Recommend No Email.
 
-Revenue minus email costs is not profit; product margins and other costs are unavailable. Neither positive predictions nor optimization identifies certain individual persuadables. IDs are source-row labels, not contact addresses. No email is sent by this project.
+The objective is to maximize the sum of predicted additional spending, subject to two rules: total email cost must stay within the budget, and each customer receives at most one recommendation.
 
-The executed default ($5,000 budget, $0.10 per email, all 64,000 profiles) selects 50,000 customers: 29,252 Men’s Emails, 20,748 Women’s Emails and 14,000 No Email actions. Allocated cost is exactly $5,000. Predicted extra revenue is $49,659.71; revenue less assumed email costs is $44,659.71, not profit. Equal-contact random targeting has predicted extra revenue of $24,125.30. Blanket targeting costs $6,400 and is infeasible under this budget. These are retrospective model-based figures, not measured outcomes.
+Both email types use the same assumed cost; No Email costs zero. Under this assumption, we first identify each customer's better email. Customers with no positive predicted spending effect are not selected. The budget determines how many positive-effect customers can be contacted.
 
-The executed notebook and `dashboard/public/results/optimization_report.json` contain the actual default results, solver status, budget scenarios and score fingerprints. `allocation_default.csv` contains the default recommendations.
+SciPy's `linprog` solver solves this equal-cost allocation problem. The implementation verifies that decisions are whole customers and checks the resulting objective against an independent highest-benefit-first calculation. This simplification applies to equal action costs; unequal costs or extra constraints would require revisiting the optimization.
 
-## How to reproduce
+Budgets are calculated in integer cents to avoid rounding-related overspending. Zero budget selects nobody. Invalid inputs and duplicate IDs are rejected. Unused budget is allowed when additional contacts have no positive predicted benefit.
 
-1. Pull the repository and select your project Python kernel.
-2. Run `07_budget_optimization.ipynb` from top to bottom. Its default uses the committed snapshot and does not require retraining.
-3. To use freshly trained results instead, run notebooks 01–06, run `python dashboard/export_data.py`, then run notebook 07.
-4. Run `cd dashboard` and `npm run dev`. Open Budget allocation. Rebuild if using production preview.
-5. Run Python verification from the repository root: `python -m unittest discover -s tests -p 'test_week3.py'`. In dashboard run `npm test` and `npm run build`.
+The shared implementation now lives in `api/optimization.py`, imported by notebook 07 and later reused by Week 4. This keeps the calculation consistent without maintaining two Python implementations.
 
-## Week 4 plan (not implemented in Week 3)
+### C. Compared strategies and explored assumptions
 
-- REST endpoints for validated scoring and allocation, with documented request/response examples and model provenance.
-- A drift detector comparing incoming baseline features with training reference data; distinguish data drift from proven effect changes.
-- Loading/error handling and final plain-English summaries, with any savings comparisons using explicit assumptions and feasible baselines.
-- Package and document the service and dashboard for reproducible local operation. A public deployment and automatic email sending are not implied.
+Compared the optimized plan with:
 
-## Viva script
+- Random customers receiving a random email, using the same contact count and cost.
+- Sending no email.
+- Sending the same email to everybody.
 
-“Week 2 estimated how emails might change customer spending. In Week 3, I used those estimates with a budget to recommend one email or no email for each customer. SciPy solves the budget problem, and the dashboard shows the choices and costs. I checked the solution independently and kept predictions separate from guaranteed business results.”
+Blanket strategies that exceed the budget are marked infeasible. The notebook also explores different budgets and assumed email costs, and saves the resulting tables and figures.
+
+These are comparisons using model predictions. A higher optimized prediction does not independently prove that a real campaign will earn more revenue.
+
+### D. Built the Budget allocation dashboard page
+
+The React and Plotly page provides:
+
+- Editable budget and cost per email.
+- Population selection: all loaded, test, training or new scored customers.
+- Summary values for selected customers, planned cost, unused budget and predicted additional revenue.
+- A chart showing counts of Men's Email, Women's Email and No Email recommendations.
+- A strategy-comparison table and chart.
+- An allocation matrix showing each customer's ID, recommendation, cost, predicted benefit and reason.
+- Action/ID filters, pagination and CSV download of every matching row—not just the visible page.
+
+The browser uses the mathematically equivalent equal-cost rule for immediate updates. Tests compare its decisions with the SciPy notebook, including the full 64,000-customer dataset. Filtering the allocation table changes the view, not the underlying budget decision.
+
+## 3. Simple example
+
+The following numbers are illustrative, not results from four identified Hillstrom customers.
+
+| Customer | Extra spend predicted for Men's Email | Extra spend predicted for Women's Email | Better action |
+|---|---:|---:|---|
+| A | $0.80 | $0.30 | Men's Email |
+| B | $0.20 | $0.90 | Women's Email |
+| C | −$0.10 | −$0.20 | No Email |
+| D | $0.40 | $0.10 | Men's Email |
+
+With a **$0.20 budget** and **$0.10 cost per email**, only two customers can be contacted. The plan chooses A and B, spending exactly $0.20 for a predicted additional revenue of $1.70. Customer D is excluded because of the budget, while C is excluded because both predicted effects are negative.
+
+## 4. Results from the saved default run
+
+These figures were checked against `dashboard/public/results/optimization_report.json`.
+
+| Item | Result |
+|---|---:|
+| Customer profiles considered | 64,000 |
+| Budget | $5,000.00 |
+| Assumed cost per email | $0.10 |
+| Customers selected | 50,000 |
+| Men's Email recommendations | 29,252 |
+| Women's Email recommendations | 20,748 |
+| No Email recommendations | 14,000 |
+| Allocated cost | $5,000.00 |
+| Unused budget | $0.00 |
+| Predicted additional revenue | $49,659.71 |
+| Predicted revenue less assumed email costs | $44,659.71 |
+| Equal-contact random strategy: predicted additional revenue | $24,125.30 |
+| Cost of emailing all 64,000 customers | $6,400.00 — exceeds the budget |
+
+**Interpretation:** the solver produces an optimal plan for the specified prediction-based, equal-cost problem. These are retrospective planning estimates, not observed campaign returns. Revenue less email cost is not profit because product margins and other costs are unavailable.
+
+## 5. Validation and limitations
+
+Checked budget limits, zero budgets, invalid costs, duplicate IDs, negative effects, deterministic ties and whole-customer decisions. Small examples were checked against exhaustive enumeration, and dashboard allocations were compared with SciPy results at full dataset scale.
+
+Both spending-ranking intervals include zero, so spending-targeting superiority remains uncertain. The women's-email subset audit warning is also retained. Plans using all 64,000 profiles include training customers and are demonstrations rather than independent evaluations. Positive scores do not identify guaranteed individual persuadables.
+
+Generated IDs identify dataset rows, not contact addresses. The project recommends actions; it does not send emails. A new randomized pilot would be needed to measure actual business gains.
+
+## 6. Deliverables and how to use them
+
+- [Notebook 07](../07_budget_optimization.ipynb): optimization, comparisons, scenarios and explanations.
+- [Shared SciPy optimizer](../api/optimization.py): Python calculation used by the notebook.
+- [Allocation dashboard](../dashboard/src/Allocation.jsx): interactive planning page.
+- [Saved optimization report](../dashboard/public/results/optimization_report.json): results, assumptions and input fingerprints.
+- [Default customer recommendations](../dashboard/public/results/allocation_default.csv): saved allocation matrix.
+
+Open notebook 07 in the project Python environment and run all cells. Its default uses the committed analysis snapshot; retraining is not required. For a new training run, execute notebooks 01–06, run `python dashboard/export_data.py`, and then rerun notebook 07.
+
+In the dashboard, open **Budget allocation**, choose a population, enter the budget and email cost, review the recommendations, and download the table. Startup instructions are in the [README](../README.md).
+
+## 7. Weekly outcome and viva explanation
+
+Week 3 turned causal-effect estimates into an actionable, budget-respecting customer plan. The dashboard makes the choices, costs and assumptions visible so a manager can inspect the proposed campaign.
+
+> “In Week 3, I used the predicted email effects from our causal models to recommend one email or no email for each customer. I implemented a SciPy optimizer that maximizes predicted additional spending without exceeding the marketing budget. I built a dashboard allocation table and tested the decisions against an independent calculation. The results are planning predictions, so I explain their uncertainty rather than promise guaranteed profit.”
+
+The later REST API, drift detector and live scoring workflow are documented separately in the [Week 4 write-up](WEEK_4_WRITEUP.md).
