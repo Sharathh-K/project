@@ -1,0 +1,13 @@
+{
+  "budget": 5000.0,
+  "spent": 5000.0,
+  "coupons": 1000,
+  "net_gain": 4143.75,
+  "extra_visits": 91.43750000000001,
+  "blanket_gain": -1637.3409617753252,
+  "by_type": {
+    "5": 1000,
+    "10": 0
+  },
+  "assumption": "lift = ITE*(1-exp(-d/3.0)), visit worth $100.0"
+}
