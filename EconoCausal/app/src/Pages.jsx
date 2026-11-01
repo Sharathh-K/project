@@ -236,7 +236,7 @@ export function AllocationPage() {
   if (err) return <><h1>Prescription</h1><Note kind="error">{err}</Note></>
   if (!rows) return <><h1>Prescription</h1><p className="muted">Loading...</p></>
   const shown = rows.filter((r) => (t === 'all' || r.discount === t) && r.customer_id.includes(q.trim()))
-  const money = (n) => '$' + Math.round(n).toLocaleString('en-US')
+  const money = (n) => (n < 0 ? '-$' : '$') + Math.abs(Math.round(n)).toLocaleString('en-US')
   return (
     <>
       <h1>Prescription</h1>
