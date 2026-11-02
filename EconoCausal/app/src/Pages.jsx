@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from './Icon'
-import { runAnalysis } from './services/api'
+import { runAnalysis, checkDrift } from './services/api'
 
 const REQUIRED = ['recency', 'history', 'mens', 'womens', 'zip_code', 'newbie', 'channel', 'segment', 'visit', 'conversion', 'spend']
 const MAX_MB = 20
@@ -90,11 +90,11 @@ function Plan({ file, plan, setPlan }) {
     e.preventDefault()
     setMsg(null)
     if (!ok) return setMsg({ k: 'error', t: 'Enter a budget of 0 or more.' })
-    if (!file) return setMsg({ k: 'warn', t: 'Upload a CSV first.' })
+    if (!plan.types.length) return setMsg({ k: 'warn', t: 'Pick at least one coupon type.' })
     setBusy(true)
     try {
-      const r = await runAnalysis({ ...plan, budget: n }, file.raw)
-      setMsg(r.status === 'pending' ? { k: 'info', t: 'Your plan is valid. ' + r.message } : { k: 'ok', t: 'The server answered. Showing results is the next step.' })
+      const r = await runAnalysis({ ...plan, budget: n })
+      setMsg({ k: 'ok', t: r.message })
     } catch (err) { setMsg({ k: 'error', t: 'Could not reach the server: ' + err.message }) }
     setBusy(false)
   }
@@ -166,6 +166,15 @@ export function Home({ file, setFile, plan, setPlan, dataset }) {
 }
 
 export function DataPage({ file, setFile, dataset }) {
+  const [dr, setDr] = useState(null)
+  const [drBusy, setDrBusy] = useState(false)
+  async function runDrift() {
+    setDr(null)
+    setDrBusy(true)
+    try { setDr({ ok: true, ...(await checkDrift(file.raw)) }) }
+    catch (e) { setDr({ ok: false, message: 'Could not check drift: ' + e.message }) }
+    setDrBusy(false)
+  }
   const demo = { columns: ['recency', 'history', 'channel', 'segment', 'visit'], preview: [['10', '142.44', 'Phone', 'Womens E-Mail', '0'], ['6', '329.08', 'Web', 'No E-Mail', '0'], ['9', '675.83', 'Web', 'Mens E-Mail', '1']] }
   const d = file || demo
   return (
@@ -178,6 +187,11 @@ export function DataPage({ file, setFile, dataset }) {
       <Card title="Preview" sub={file ? 'First rows of your file, read in your browser.' : 'Sample rows for illustration only. Upload a CSV to see your own data.'}>
         <div className="scroll"><table><thead><tr>{d.columns.map((c) => <th key={c}>{c}</th>)}</tr></thead>
           <tbody>{d.preview.map((r, i) => <tr key={i}>{r.map((c, j) => <td key={j}>{c}</td>)}</tr>)}</tbody></table></div></Card>
+      <Card title="Data drift check" sub="Compares your file with the data the model was trained on.">
+        <button className="btn" disabled={!file || drBusy} onClick={runDrift}>{drBusy ? 'Checking...' : 'Check for drift'}</button>
+        {!file && <p className="muted">Upload a CSV first.</p>}
+        {dr && <Note kind={!dr.ok ? 'error' : dr.drifted.length ? 'warn' : 'ok'}>{dr.message}</Note>}
+      </Card>
     </>
   )
 }
@@ -281,4 +295,5 @@ export function SettingsPage({ compact, setCompact, reset }) {
         <button className="btn primary" onClick={() => { reset(); setAsk(false) }}>Yes, reset</button></Modal>}
     </>
   )
-}
+        }
+      
