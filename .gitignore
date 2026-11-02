@@ -9,6 +9,12 @@ __pycache__/
 # Jupyter checkpoints
 .ipynb_checkpoints/
 
+# React dashboard
+dashboard/node_modules/
+dashboard/dist/
+dashboard/.env.local
+dashboard/.env.*.local
+
 # Unrequired Notebook
 Notebooks/02_preprocess_and_split.ipynb
 Notebooks/Double_ML_pipeline.ipynb

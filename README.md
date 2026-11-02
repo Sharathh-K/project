@@ -40,7 +40,7 @@ The experiment does **not** record discount amounts, discount costs or profit ma
 | Double ML models (LinearDML, CausalForestDML, ForestDRLearner) | Done, ForestDRLearner used downstream |
 | Budget optimization (SciPy linear program) | Done and validated |
 | REST API (FastAPI) and data drift detector | Done |
-| Dashboard (React + Plotly) | In progress |
+| Dashboard (React) | Day 1 complete: navigation, CSV upload, API connection and budget optimization |
 
 ## Key Results
 
@@ -94,6 +94,40 @@ Interactive docs: http://127.0.0.1:8000/docs
 | `POST /drift` | Compares an upload with the training data and warns if customer behavior looks different |
 
 `history_floor` is optional in requests and is computed from `history` when omitted.
+
+## Run the dashboard
+
+In a second terminal, start the React app:
+
+```
+cd dashboard
+npm install
+npm run dev
+```
+
+Open the Vite URL (by default http://localhost:5173). The dashboard checks the API at
+`http://127.0.0.1:8000`; set `VITE_API_BASE_URL` in `dashboard/.env.local` to use a
+different API address. Restart Vite after changing the environment file.
+
+### Day 1 requirements and delivery
+
+- Provide navigation between the campaign workspace and its methodology.
+- Parse and validate customer CSVs in the browser before sending them to the API.
+- Accept the model's pre-campaign fields (`recency`, `history`, `mens`, `womens`,
+  `newbie`, `zip_code`, `channel`), with optional `Customer ID`/`customer_id` and
+  `history_floor`. Ignore other columns, including post-campaign outcomes.
+- Show API connection and model status, and report connection, validation and
+  optimization errors instead of showing success-shaped fallbacks.
+- Let the user set the total budget and per-arm e-mail costs; use the project
+  defaults ($1,600, $0.10 and $0.15). The API's $113.83 revenue-per-conversion
+  default is not an editable dashboard input.
+- Call `POST /optimize` and show selected and unselected customer counts, the
+  per-arm totals, and paginated allocations that can be filtered by e-mail arm.
+- Keep estimates and the cost/revenue assumptions clearly labeled as such.
+
+The dashboard currently accepts up to 100,000 rows, matching the API limit. Later
+dashboard work can add the README-planned uplift/Qini visualizations and broader
+evaluation views.
 
 ## Tests
 
