@@ -59,10 +59,15 @@ a {
 
 .brand {
   display: flex;
+  width: 100%;
   align-items: center;
   gap: 10px;
   padding: 0 10px;
+  border: 0;
   color: #fff;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
 }
 
 .brand-mark {
@@ -105,14 +110,20 @@ a {
 
 .nav-link {
   display: flex;
+  width: 100%;
   min-height: 43px;
   align-items: center;
   gap: 11px;
   padding: 0 11px;
+  border: 0;
   border-radius: 7px;
   color: #b6ccca;
+  background: transparent;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 500;
+  text-align: left;
+  cursor: pointer;
   transition: background 150ms ease, color 150ms ease;
 }
 
@@ -550,6 +561,13 @@ h2 {
   margin-bottom: 14px;
 }
 
+.budget-context-hint {
+  margin: 8px 0 0;
+  color: #49816e;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
 .cost-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -919,6 +937,7 @@ h2 {
 
 .allocation-tools {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
 }
@@ -941,6 +960,23 @@ h2 {
   color: #4c6a65;
   background: #fff;
   font-size: 9px;
+}
+
+.customer-search input {
+  width: 140px;
+  min-height: 29px;
+  padding: 0 8px;
+  border: 1px solid #e2e9e7;
+  border-radius: 5px;
+  color: #4c6a65;
+  background: #fff;
+  font-size: 9px;
+}
+
+.customer-search input:focus,
+.arm-filter select:focus {
+  border-color: #5aa68e;
+  outline: 2px solid rgb(54 151 121 / 12%);
 }
 
 .allocation-header h3 {
@@ -1111,6 +1147,237 @@ td {
   color: #c1cac7;
 }
 
+.overview-page,
+.methodology-page {
+  display: grid;
+  gap: 16px;
+}
+
+.overview-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.overview-card {
+  display: grid;
+  min-height: 116px;
+  align-content: center;
+  gap: 7px;
+  padding: 17px;
+  border: 1px solid #e6ecea;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.overview-card strong {
+  color: #2a514a;
+  font-size: 23px;
+  letter-spacing: -0.5px;
+}
+
+.overview-card > span:last-child {
+  color: #8c9996;
+  font-size: 10px;
+}
+
+.overview-callout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 19px;
+  border: 1px solid #dfeae5;
+  border-radius: 9px;
+  background: #f9fcfa;
+}
+
+.overview-callout h2 {
+  margin-bottom: 5px;
+}
+
+.overview-callout p {
+  margin-bottom: 0;
+  color: #81908d;
+  font-size: 11px;
+}
+
+.methodology-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 19px;
+  border: 1px solid #e4ece8;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.methodology-card h2 {
+  margin: 2px 0 7px;
+}
+
+.methodology-card p,
+.methodology-copy {
+  margin-bottom: 0;
+  color: #84918e;
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.methodology-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.methodology-grid .aside-card {
+  min-height: 150px;
+}
+
+.methodology-grid .aside-card h3 {
+  margin-bottom: 9px;
+}
+
+.methodology-api-link {
+  justify-self: start;
+  color: #397a68;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.methodology-api-link:hover {
+  text-decoration: underline;
+}
+
+.evaluation-page {
+  display: grid;
+  gap: 17px;
+}
+
+.evaluation-intro {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid #e4ece8;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.evaluation-intro h2 {
+  margin-bottom: 6px;
+}
+
+.evaluation-intro p:last-child {
+  max-width: 700px;
+  margin-bottom: 0;
+  color: #84918e;
+  font-size: 10px;
+  line-height: 1.65;
+}
+
+.evaluation-intro .eyebrow {
+  margin-bottom: 6px;
+}
+
+.evaluation-intro .result-count {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.evaluation-message,
+.evaluation-error {
+  padding: 14px 16px;
+  border: 1px solid #e4ece8;
+  border-radius: 7px;
+  color: #59736d;
+  background: #fff;
+  font-size: 10px;
+}
+
+.evaluation-error {
+  border-color: #efd6c3;
+  color: #805a3d;
+  background: #fff9f3;
+}
+
+.arm-evaluation {
+  display: grid;
+  gap: 10px;
+}
+
+.arm-evaluation-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.arm-evaluation-heading .eyebrow {
+  margin-bottom: 4px;
+}
+
+.arm-evaluation-heading h3 {
+  margin: 0;
+  color: #355451;
+  font-size: 14px;
+}
+
+.qini-summary {
+  display: grid;
+  gap: 3px;
+  padding: 8px 11px;
+  border: 1px solid #e3ebe7;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.qini-summary span,
+.qini-summary small {
+  color: #84918e;
+  font-size: 8px;
+}
+
+.qini-summary strong {
+  color: #2a514a;
+  font-size: 14px;
+}
+
+.curve-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.curve-card {
+  min-width: 0;
+  overflow: hidden;
+  padding: 13px 10px 5px;
+  border: 1px solid #e6ecea;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.curve-card h4 {
+  margin: 0 4px 4px;
+  color: #355451;
+  font-size: 11px;
+}
+
+.curve-card > p {
+  margin: 0 4px 3px;
+  color: #879390;
+  font-size: 9px;
+}
+
+.evaluation-disclaimer {
+  margin: 0;
+  color: #899592;
+  font-size: 9px;
+  line-height: 1.6;
+}
+
 @media (min-width: 1450px) {
   .page-content {
     padding-top: 48px;
@@ -1178,6 +1445,14 @@ td {
 
   .page-content {
     max-width: 760px;
+  }
+
+  .methodology-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .curve-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1253,6 +1528,15 @@ td {
     align-items: start;
   }
 
+  .overview-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-callout {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .result-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1271,6 +1555,14 @@ td {
 
   .methodology-strip > a {
     margin-left: 41px;
+  }
+
+  .evaluation-intro {
+    flex-direction: column;
+  }
+
+  .allocation-tools {
+    align-items: flex-start;
   }
 }
 
@@ -1333,5 +1625,13 @@ td {
   .allocation-tools {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .customer-search {
+    width: 100%;
+  }
+
+  .customer-search input {
+    width: 100%;
   }
 }

@@ -34,6 +34,10 @@ export function getHealth() {
   return request("/health");
 }
 
+export function getEvaluationCurves() {
+  return request("/evaluation/curves");
+}
+
 export function optimizeCampaign(payload) {
   return request("/optimize", {
     method: "POST",

@@ -40,7 +40,7 @@ The experiment does **not** record discount amounts, discount costs or profit ma
 | Double ML models (LinearDML, CausalForestDML, ForestDRLearner) | Done, ForestDRLearner used downstream |
 | Budget optimization (SciPy linear program) | Done and validated |
 | REST API (FastAPI) and data drift detector | Done |
-| Dashboard (React) | Day 1 complete: navigation, CSV upload, API connection and budget optimization |
+| Dashboard (React) | Day 2 complete: campaign planning, Qini/uplift evaluation and customer explorer |
 
 ## Key Results
 
@@ -91,6 +91,7 @@ Interactive docs: http://127.0.0.1:8000/docs
 | `GET /health` | Model loaded, arms and expected input fields |
 | `POST /predict` | Estimated increase in purchase probability for a Mens and a Womens e-mail, per customer |
 | `POST /optimize` | Best e-mail per customer under a budget, with expected revenue, shadow price and cost saving vs e-mailing everyone |
+| `GET /evaluation/curves` | Held-out experiment Qini/uplift curves by e-mail arm, with 90% customer-bootstrap bands |
 | `POST /drift` | Compares an upload with the training data and warns if customer behavior looks different |
 
 `history_floor` is optional in requests and is computed from `history` when omitted.
@@ -109,7 +110,9 @@ Open the Vite URL (by default http://localhost:5173). The dashboard checks the A
 `http://127.0.0.1:8000`; set `VITE_API_BASE_URL` in `dashboard/.env.local` to use a
 different API address. Restart Vite after changing the environment file.
 
-### Day 1 requirements and delivery
+### Dashboard requirements and delivery
+
+#### Day 1: campaign planning
 
 - Provide navigation between the campaign workspace and its methodology.
 - Parse and validate customer CSVs in the browser before sending them to the API.
@@ -118,16 +121,34 @@ different API address. Restart Vite after changing the environment file.
   `history_floor`. Ignore other columns, including post-campaign outcomes.
 - Show API connection and model status, and report connection, validation and
   optimization errors instead of showing success-shaped fallbacks.
-- Let the user set the total budget and per-arm e-mail costs; use the project
-  defaults ($1,600, $0.10 and $0.15). The API's $113.83 revenue-per-conversion
-  default is not an editable dashboard input.
+- Suggest a total budget of $0.025 per uploaded customer unless the user has
+  already edited the budget. Let the user set per-arm e-mail costs and revenue
+  per conversion, defaulting to $0.10, $0.15 and $113.83 respectively. The
+  results disclaimer displays the revenue-per-conversion value submitted.
 - Call `POST /optimize` and show selected and unselected customer counts, the
-  per-arm totals, and paginated allocations that can be filtered by e-mail arm.
+  per-arm totals, and paginated allocations that can be filtered by customer,
+  e-mail arm, ZIP code, channel and estimated uplift.
+- Provide Qini and uplift curves for each e-mail arm vs. no e-mail, with a
+  random-targeting reference and 90% bootstrap confidence bands. Curves use the
+  labeled held-out randomized test set, not customer uploads without outcomes.
 - Keep estimates and the cost/revenue assumptions clearly labeled as such.
+- Let the sidebar navigate between overview, campaign planner and methodology.
 
-The dashboard currently accepts up to 100,000 rows, matching the API limit. Later
-dashboard work can add the README-planned uplift/Qini visualizations and broader
-evaluation views.
+#### Day 2: evaluation and customer explorer
+
+- `GET /evaluation/curves` scores the held-out randomized test set and returns
+  Qini/uplift curves for each e-mail arm versus no e-mail, with 90% bootstrap
+  confidence bands and a random-targeting reference.
+- The Insights tab visualizes the held-out curves with Plotly and labels the
+  evaluation data and uncertainty.
+- The customer explorer displays the optimizer's full allocation, with filters
+  for customer ID, e-mail arm, ZIP code, channel and positive/zero/negative
+  estimated uplift.
+
+Campaign uploads accept up to 100,000 rows, matching the API limit. Evaluation
+curves use the held-out experimental test data, which has treatment assignments
+and observed outcomes; they are not computed from campaign uploads that contain
+only pre-campaign customer features.
 
 ## Tests
 
@@ -135,6 +156,7 @@ evaluation views.
 python src/drift.py          # builds Models/drift_reference.json
 python -m tests.smoke_test
 python -m tests.drift_test
+python -m pytest tests/evaluation_test.py
 ```
 
 ## Methodology

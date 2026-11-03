@@ -1,4 +1,5 @@
 import sys
+import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal, Optional
@@ -14,10 +15,12 @@ sys.path.insert(0, str(ROOT / "src"))          # engine code: dml_pipeline, opti
 
 import dml_pipeline                            # noqa: E402,F401  (the saved model refers to this module)
 from drift import check_drift, load_reference  # noqa: E402
+from evaluation import build_evaluation_curves  # noqa: E402
 from optimizer import optimize_campaign        # noqa: E402
 
 MODEL_PATH = ROOT / "Models" / "forestdr_pipe.joblib"
 DRIFT_PATH = ROOT / "Models" / "drift_reference.json"
+EVALUATION_PATH = ROOT / "Data" / "Processed" / "test.csv"
 MAX_ROWS = 100_000
 HISTORY_FLOOR = 29.99                          # smallest history value in the data; history_floor flags it
 
@@ -26,13 +29,16 @@ HISTORY_FLOOR = 29.99                          # smallest history value in the d
 async def lifespan(app: FastAPI):
     app.state.model = joblib.load(MODEL_PATH)
     app.state.drift_ref = load_reference(DRIFT_PATH) if DRIFT_PATH.exists() else None
+    app.state.evaluation_curves = None
+    app.state.evaluation_lock = threading.Lock()
     yield
 
 
 app = FastAPI(title="EconoCausal API", version="0.2.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],   # the React dev server
+    allow_origins=[],
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -112,10 +118,36 @@ def optimize(req: OptimizeRequest):
         "cost_saving_vs_blanket_mens": n * req.cost_mens - summary["total_cost"],
     })
 
-    cols = ["customer_id", "assigned_arm", "ite_mens", "ite_womens",
+    cols = ["customer_id", "zip_code", "channel", "assigned_arm", "ite_mens", "ite_womens",
             "expected_uplift", "expected_revenue", "cost", "group"]
     rows = plan if req.include_all else plan[plan["group"] == "Persuadable"]
     return {"summary": summary, "allocations": rows[cols].to_dict("records")}
+
+
+@app.get("/evaluation/curves")
+def evaluation_curves():
+    """Return holdout Qini and uplift curves with 90% bootstrap confidence bands."""
+    with app.state.evaluation_lock:
+        cached = app.state.evaluation_curves
+        if cached is not None:
+            return cached
+        if not EVALUATION_PATH.exists():
+            raise HTTPException(status_code=503, detail="Held-out evaluation data is not available.")
+
+        test = pd.read_csv(EVALUATION_PATH)
+        if "Customer ID" not in test:
+            raise HTTPException(status_code=500, detail="Held-out evaluation data has no Customer ID column.")
+        customers = [
+            Customer.model_validate({**row, "customer_id": str(row["Customer ID"])})
+            for row in test.to_dict(orient="records")
+        ]
+        predictions = score(app.state.model, customers)
+        try:
+            curves = build_evaluation_curves(test, predictions)
+        except ValueError as error:
+            raise HTTPException(status_code=500, detail=str(error)) from error
+        app.state.evaluation_curves = curves
+        return curves
 
 
 @app.post("/drift")
