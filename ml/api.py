@@ -29,8 +29,10 @@ def prescribe(budget: float = 5000, types: str = "5,10", count: int | None = Non
     if r.returncode:
         return {"error": r.stderr[-500:]}
     s = json.loads((RES / "prescription_summary.json").read_text())
-    s["message"] = (f"This strategy gains ${s['net_gain']:,.0f} compared to "
-                    f"${s['blanket_gain']:,.0f} for blanket targeting.")
+       def money(n):
+        return ("-$" if n < 0 else "$") + f"{abs(n):,.0f}"
+    s["message"] = (f"This strategy gains {money(s['net_gain'])} compared to "
+                    f"{money(s['blanket_gain'])} for blanket targeting.")
     return s
 
 
