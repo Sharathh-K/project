@@ -1012,6 +1012,30 @@ th {
   font-weight: 600;
 }
 
+.sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sort-button:hover,
+.sort-button:focus-visible {
+  color: #286d5c;
+}
+
+.sort-button:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid rgb(54 151 121 / 25%);
+  outline-offset: 2px;
+}
+
 td {
   padding: 10px 13px;
   border-top: 1px solid #eff2f1;
@@ -1322,6 +1346,13 @@ td {
   margin: 0;
   color: #355451;
   font-size: 14px;
+}
+
+.evaluation-takeaway {
+  margin: 6px 0 0;
+  color: #39745e;
+  font-size: 10px;
+  font-weight: 600;
 }
 
 .qini-summary {

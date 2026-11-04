@@ -127,10 +127,14 @@ different API address. Restart Vite after changing the environment file.
   results disclaimer displays the revenue-per-conversion value submitted.
 - Call `POST /optimize` and show selected and unselected customer counts, the
   per-arm totals, and paginated allocations that can be filtered by customer,
-  e-mail arm, ZIP code, channel and estimated uplift.
+  e-mail arm, ZIP code, channel and the best estimated uplift across either
+  e-mail arm. Allocation columns can be sorted and include the uploaded ZIP,
+  channel and newbie fields, per-arm uplift estimates and final recommendation.
 - Provide Qini and uplift curves for each e-mail arm vs. no e-mail, with a
-  random-targeting reference and 90% bootstrap confidence bands. Curves use the
-  labeled held-out randomized test set, not customer uploads without outcomes.
+  random-targeting reference and 90% bootstrap confidence bands. Qini bands
+  show the pointwise interval for advantage over the random-targeting line;
+  the Qini area interval supplies the overall verdict. Curves use the labeled
+  held-out randomized test set, not customer uploads without outcomes.
 - Keep estimates and the cost/revenue assumptions clearly labeled as such.
 - Let the sidebar navigate between overview, campaign planner and methodology.
 
@@ -138,12 +142,13 @@ different API address. Restart Vite after changing the environment file.
 
 - `GET /evaluation/curves` scores the held-out randomized test set and returns
   Qini/uplift curves for each e-mail arm versus no e-mail, with 90% bootstrap
-  confidence bands and a random-targeting reference.
-- The Insights tab visualizes the held-out curves with Plotly and labels the
-  evaluation data and uncertainty.
+  confidence bands and a random-targeting reference. Qini gap bands compare
+  each bootstrap Qini curve with its own random baseline.
+- The Insights tab visualizes the held-out curves with Plotly and gives a
+  plain-language takeaway based on whether the Qini area interval excludes 0.
 - The customer explorer displays the optimizer's full allocation, with filters
   for customer ID, e-mail arm, ZIP code, channel and positive/zero/negative
-  estimated uplift.
+  best-arm estimated uplift. All output columns are sortable.
 
 Campaign uploads accept up to 100,000 rows, matching the API limit. Evaluation
 curves use the held-out experimental test data, which has treatment assignments

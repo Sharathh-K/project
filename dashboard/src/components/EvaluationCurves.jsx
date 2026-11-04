@@ -16,8 +16,12 @@ function CurvePlot({ curve, metric }) {
   const data = curve[metric];
   const firstPoint = isQini ? 0 : 4;
   const x = data.x.slice(firstPoint).map((value) => value * 100);
-  const lower = data.lower.slice(firstPoint);
-  const upper = data.upper.slice(firstPoint);
+  const lower = isQini
+    ? data.random.slice(firstPoint).map((value, index) => value + data.gap_lower[firstPoint + index])
+    : data.lower.slice(firstPoint);
+  const upper = isQini
+    ? data.random.slice(firstPoint).map((value, index) => value + data.gap_upper[firstPoint + index])
+    : data.upper.slice(firstPoint);
   const observed = data.y.slice(firstPoint);
   const traces = [
     {
@@ -37,7 +41,7 @@ function CurvePlot({ curve, metric }) {
       fill: "tonexty",
       fillcolor: "rgba(35, 128, 104, 0.15)",
       hoverinfo: "skip",
-      name: "90% confidence band",
+      name: isQini ? "90% CI for advantage over random" : "90% uplift confidence band",
       type: "scatter",
     },
     {
@@ -110,6 +114,13 @@ function CurvePlot({ curve, metric }) {
   );
 }
 
+function qiniTakeaway(curve) {
+  const [lower, upper] = curve.qini.area_ci;
+  if (lower > 0) return "Modest evidence ranking beats random targeting.";
+  if (upper < 0) return "Evidence suggests ranking trails random targeting.";
+  return "No clear evidence ranking beats random targeting.";
+}
+
 export default function EvaluationCurves({ active }) {
   const [evaluation, setEvaluation] = useState(null);
   const [error, setError] = useState("");
@@ -153,7 +164,8 @@ export default function EvaluationCurves({ active }) {
           <h2>Uplift and Qini curves</h2>
           <p>
             Ranked targeting is evaluated on the held-out randomized experiment using observed conversions.
-            Shaded bands are 90% customer-bootstrap intervals; they are uncertainty estimates, not guarantees.
+            The Qini band shows the pointwise 90% interval for advantage over random targeting; its verdict uses
+            the 90% interval for total Qini area. Uplift bands show observed-uplift uncertainty.
           </p>
         </div>
         {evaluation && (
@@ -177,6 +189,7 @@ export default function EvaluationCurves({ active }) {
             <div>
               <p className="eyebrow">{curve.arm.toUpperCase()} VS. {curve.control.toUpperCase()}</p>
               <h3>{curve.arm} evaluation</h3>
+              <p className="evaluation-takeaway">Takeaway: {qiniTakeaway(curve)}</p>
             </div>
             <div className="qini-summary">
               <span>Qini area</span>
@@ -202,7 +215,8 @@ export default function EvaluationCurves({ active }) {
       {evaluation && (
         <p className="evaluation-disclaimer">
           These curves describe ranking performance in the held-out experiment, not the outcome of a future campaign.
-          Random targeting is the Qini reference line; the uplift reference is the observed average arm effect.
+          The Qini shaded band compares ranked and random targeting point by point; the area interval summarizes that
+          gap across the full curve. The uplift reference is the observed average arm effect.
         </p>
       )}
     </section>

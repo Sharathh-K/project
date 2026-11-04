@@ -31,5 +31,6 @@ with TestClient(app) as client:
     out = r.json()
     print(out["summary"])
     print(out["allocations"][:2])
+    assert {"customer_id", "zip_code", "channel", "newbie", "ite_mens", "ite_womens"} <= set(out["allocations"][0])
     assert out["summary"]["total_cost"] <= budget + 1e-6, "budget exceeded"
     print("budget respected: OK")

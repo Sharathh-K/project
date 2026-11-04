@@ -118,7 +118,7 @@ def optimize(req: OptimizeRequest):
         "cost_saving_vs_blanket_mens": n * req.cost_mens - summary["total_cost"],
     })
 
-    cols = ["customer_id", "zip_code", "channel", "assigned_arm", "ite_mens", "ite_womens",
+    cols = ["customer_id", "zip_code", "channel", "newbie", "assigned_arm", "ite_mens", "ite_womens",
             "expected_uplift", "expected_revenue", "cost", "group"]
     rows = plan if req.include_all else plan[plan["group"] == "Persuadable"]
     return {"summary": summary, "allocations": rows[cols].to_dict("records")}

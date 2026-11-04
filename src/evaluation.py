@@ -66,12 +66,14 @@ def build_evaluation_curves(test, predictions, n_boot=300, seed=0):
 
         qini, uplift = _curves(outcome, treated, score)
         bootstrap_qini = np.empty((n_boot, curve_count))
+        bootstrap_qini_gap = np.empty((n_boot, curve_count))
         bootstrap_uplift = np.empty((n_boot, curve_count))
         for sample_index in range(n_boot):
             indices = rng.integers(0, len(outcome), len(outcome))
             sample_treated = treated[indices]
             if sample_treated.sum() == 0 or sample_treated.sum() == len(indices):
                 bootstrap_qini[sample_index] = np.nan
+                bootstrap_qini_gap[sample_index] = np.nan
                 bootstrap_uplift[sample_index] = np.nan
                 continue
             bootstrap_qini[sample_index], bootstrap_uplift[sample_index] = _curves(
@@ -79,8 +81,13 @@ def build_evaluation_curves(test, predictions, n_boot=300, seed=0):
                 sample_treated,
                 score[indices],
             )
+            bootstrap_qini_gap[sample_index] = (
+                bootstrap_qini[sample_index]
+                - bootstrap_qini[sample_index, -1] * GRID
+            )
 
         qini_lower, qini_upper = np.nanpercentile(bootstrap_qini, [5, 95], axis=0)
+        qini_gap_lower, qini_gap_upper = np.nanpercentile(bootstrap_qini_gap, [5, 95], axis=0)
         uplift_lower, uplift_upper = np.nanpercentile(bootstrap_uplift, [5, 95], axis=0)
         average_uplift = float((outcome[treated == 1].mean() - outcome[treated == 0].mean()) * 100)
         top_30_index = int(np.argmin(np.abs(GRID - 0.30)))
@@ -95,6 +102,8 @@ def build_evaluation_curves(test, predictions, n_boot=300, seed=0):
                 "random": (qini[-1] * GRID).tolist(),
                 "lower": qini_lower.tolist(),
                 "upper": qini_upper.tolist(),
+                "gap_lower": qini_gap_lower.tolist(),
+                "gap_upper": qini_gap_upper.tolist(),
                 "area": _qini_area(qini),
                 "area_ci": [
                     float(np.nanpercentile([_qini_area(sample) for sample in bootstrap_qini], 5)),
