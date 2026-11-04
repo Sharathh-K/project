@@ -12,7 +12,7 @@ from scipy.sparse import identity, kron, csr_matrix
 IN_PATH = Path("EconoCausal/results/ite_results_visit.csv")
 OUT_DIR = Path("EconoCausal/results")
 POOL = 5000              # only the top customers by ITE are considered
-VALUE_PER_VISIT = 25.0   # ASSUMPTION: $ value of one extra visit
+VALUE_PER_VISIT = 100.0  # ASSUMPTION: $ value of one extra visit incl. later purchases (25.0 gave zero coupons)
 K = 3.0                  # ASSUMPTION: lift(d) = ITE * (1 - exp(-d / K))
 
 
