@@ -62,8 +62,22 @@ function PageIntro({ activeTab }) {
   );
 }
 
-function Overview({ customers, result, onOpenPlanner }) {
+function Overview({ customers, result, drift, onOpenPlanner }) {
   const summary = result?.data?.summary;
+  const driftLabel = drift.status === "checking"
+    ? "Checking..."
+    : drift.status === "unavailable"
+      ? "Unavailable"
+      : drift.status === "done"
+        ? drift.data.status.replaceAll("_", " ")
+        : customers.length
+          ? "Not checked"
+          : "—";
+  const driftDescription = drift.status === "done"
+    ? `${formatNumber(drift.data.n_rows)} rows compared with training data`
+    : drift.status === "unavailable"
+      ? drift.error
+      : "Runs after a customer CSV is uploaded";
   return (
     <section className="overview-page">
       <div className="overview-card-grid">
@@ -81,6 +95,11 @@ function Overview({ customers, result, onOpenPlanner }) {
           <span className="result-label">Latest estimated extra revenue</span>
           <strong>{summary ? formatCurrency(summary.total_expected_revenue) : "—"}</strong>
           <span>Model estimate, not a guarantee</span>
+        </article>
+        <article className="overview-card">
+          <span className="result-label">Data drift check</span>
+          <strong>{driftLabel}</strong>
+          <span>{driftDescription}</span>
         </article>
       </div>
       <div className="overview-callout">
@@ -148,6 +167,7 @@ export default function App() {
   const [customers, setCustomers] = useState([]);
   const [settings, setSettings] = useState(INITIAL_SETTINGS);
   const [result, setResult] = useState(null);
+  const [drift, setDrift] = useState({ status: "idle", data: null, error: "" });
   const budgetEditedRef = useRef(false);
   const [apiOnline, setApiOnline] = useState(false);
   const [apiError, setApiError] = useState("");
@@ -200,6 +220,7 @@ export default function App() {
             <Overview
               customers={customers}
               result={result}
+              drift={drift}
               onOpenPlanner={() => changeTab("planner")}
             />
           </div>
@@ -213,6 +234,8 @@ export default function App() {
               budgetEditedRef={budgetEditedRef}
               result={result}
               setResult={setResult}
+              drift={drift}
+              setDrift={setDrift}
               apiOnline={apiOnline}
               apiError={apiError}
               health={health}

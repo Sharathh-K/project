@@ -130,6 +130,12 @@ different API address. Restart Vite after changing the environment file.
   e-mail arm, ZIP code, channel and the best estimated uplift across either
   e-mail arm. Allocation columns can be sorted and include the uploaded ZIP,
   channel and newbie fields, per-arm uplift estimates and final recommendation.
+- Show a plain-English plan summary with spend comparison, e-mail counts,
+  estimated incremental purchases/revenue and a model-estimate caveat.
+- Export the current filtered and sorted allocations as CSV or Excel in full;
+  PDF exports include up to the first 1,000 rows and explain when truncated.
+- Check data drift after upload without blocking optimization, show a warning
+  banner under the upload and with plan results, and surface the status on Overview.
 - Provide Qini and uplift curves for each e-mail arm vs. no e-mail, with a
   random-targeting reference and 90% bootstrap confidence bands. Qini bands
   show the pointwise interval for advantage over the random-targeting line;
@@ -149,6 +155,12 @@ different API address. Restart Vite after changing the environment file.
 - The customer explorer displays the optimizer's full allocation, with filters
   for customer ID, e-mail arm, ZIP code, channel and positive/zero/negative
   best-arm estimated uplift. All output columns are sortable.
+- CSV, Excel and PDF downloads contain all rows matching the current explorer
+  filters and sort order; PDF is capped at 1,000 rows. Excel provides separate
+  Summary and Allocations sheets.
+- The plan summary explains the allocation and user assumptions. Data drift is
+  checked when a CSV is uploaded; warnings never block running or exporting a
+  plan and include expandable feature and uplift details.
 
 Campaign uploads accept up to 100,000 rows, matching the API limit. Evaluation
 curves use the held-out experimental test data, which has treatment assignments

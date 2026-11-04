@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
-import { optimizeCampaign } from "../api.js";
+import { checkDrift, optimizeCampaign } from "../api.js";
 import Results from "../components/Results.jsx";
+import DriftBanner from "../components/DriftBanner.jsx";
 import { defaultBudgetForCustomerCount, formatCurrency, formatNumber } from "../format.js";
 import { parseCustomerCsv } from "../csv.js";
 
@@ -33,6 +34,8 @@ export default function Planner({
   budgetEditedRef,
   result,
   setResult,
+  drift,
+  setDrift,
   apiOnline,
   apiError,
   health,
@@ -40,6 +43,7 @@ export default function Planner({
   onRetry,
 }) {
   const fileInput = useRef(null);
+  const driftRequestRef = useRef(0);
   const [fileName, setFileName] = useState("");
   const [fileError, setFileError] = useState("");
   const [runError, setRunError] = useState("");
@@ -73,17 +77,21 @@ export default function Planner({
   }
 
   async function loadFile(file) {
+    const requestId = driftRequestRef.current + 1;
+    driftRequestRef.current = requestId;
     setFileError("");
     setRunError("");
     setResult(null);
     setCustomers([]);
     setFileName("");
     setPage(1);
+    setDrift({ status: "idle", data: null, error: "" });
     if (!file) return;
 
     setIsParsing(true);
     try {
       const parsed = await parseCustomerCsv(file);
+      if (requestId !== driftRequestRef.current) return;
       setCustomers(parsed);
       setFileName(file.name);
       if (!budgetEditedRef.current) {
@@ -92,10 +100,22 @@ export default function Planner({
           budget: defaultBudgetForCustomerCount(parsed.length),
         }));
       }
+      setDrift({ status: "checking", data: null, error: "" });
+      checkDrift(parsed)
+        .then((data) => {
+          if (requestId === driftRequestRef.current) {
+            setDrift({ status: "done", data, error: "" });
+          }
+        })
+        .catch((error) => {
+          if (requestId === driftRequestRef.current) {
+            setDrift({ status: "unavailable", data: null, error: error.message });
+          }
+        });
     } catch (error) {
-      setFileError(error.message);
+      if (requestId === driftRequestRef.current) setFileError(error.message);
     } finally {
-      setIsParsing(false);
+      if (requestId === driftRequestRef.current) setIsParsing(false);
     }
   }
 
@@ -126,6 +146,8 @@ export default function Planner({
       setResult({
         data,
         valuePerConversion: payload.value_per_conversion,
+        costMens: payload.cost_mens,
+        costWomens: payload.cost_womens,
       });
       setPage(1);
     } catch (error) {
@@ -191,6 +213,7 @@ export default function Planner({
               onChange={handleFileChange}
               aria-label="Choose a customer CSV file"
             />
+            <DriftBanner drift={drift} />
             {fileError && <p className="form-error" role="alert">{fileError}</p>}
 
             <div className="schema-hint">
@@ -273,7 +296,12 @@ export default function Planner({
             </div>
           </form>
 
-          {result && <Results result={result} page={page} setPage={setPage} />}
+          {result && (
+            <>
+              <DriftBanner drift={drift} />
+              <Results result={result} page={page} setPage={setPage} drift={drift} />
+            </>
+          )}
         </div>
 
         <aside className="planner-aside">

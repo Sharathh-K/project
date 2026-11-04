@@ -1,5 +1,13 @@
 import { useMemo, useState } from "react";
 import { formatCurrency, formatNumber, formatUplift } from "../format.js";
+import { buildPlanSummary } from "../planSummary.js";
+import {
+  downloadCsv,
+  downloadExcel,
+  downloadPdf,
+  getLocalDateString,
+  isExportDisabled,
+} from "../exportTable.js";
 
 const PAGE_SIZE = 25;
 
@@ -19,13 +27,15 @@ const TABLE_COLUMNS = [
   },
   {
     key: "expected_uplift",
-    label: "Est. uplift",
+    label: "Best-arm uplift",
+    title: "Best-arm uplift = the larger of the Mens and Womens estimates. The optimizer can assign the cheaper Mens e-mail even when the Womens estimate is slightly higher, so revenue uses the assigned arm's estimate.",
     value: bestArmUplift,
     render: (row) => formatUplift(bestArmUplift(row)),
   },
   {
     key: "expected_revenue",
-    label: "Est. revenue",
+    label: "Est. revenue (assigned arm)",
+    title: "Best-arm uplift = the larger of the Mens and Womens estimates. The optimizer can assign the cheaper Mens e-mail even when the Womens estimate is slightly higher, so revenue uses the assigned arm's estimate.",
     value: (row) => row.expected_revenue,
     render: (row) => formatCurrency(row.expected_revenue),
   },
@@ -65,7 +75,7 @@ const TABLE_COLUMNS = [
   },
 ];
 
-export default function Results({ result, page, setPage }) {
+export default function Results({ result, page, setPage, drift }) {
   const { data, valuePerConversion } = result;
   const allocations = data.allocations;
   const [selectedArm, setSelectedArm] = useState("All arms");
@@ -75,6 +85,8 @@ export default function Results({ result, page, setPage }) {
   const [search, setSearch] = useState("");
   const [sortColumn, setSortColumn] = useState("customer_id");
   const [sortDirection, setSortDirection] = useState("ascending");
+  const [exporting, setExporting] = useState("");
+  const [exportError, setExportError] = useState("");
   const filteredAllocations = useMemo(() => allocations.filter((row) => {
     const matchesArm = selectedArm === "All arms" || row.assigned_arm === selectedArm;
     const matchesZip = selectedZip === "All ZIP codes" || row.zip_code === selectedZip;
@@ -104,6 +116,7 @@ export default function Results({ result, page, setPage }) {
   const pageCount = Math.max(1, Math.ceil(filteredAllocations.length / PAGE_SIZE));
   const visibleRows = sortedAllocations.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const summary = data.summary;
+  const planSummary = buildPlanSummary(summary, valuePerConversion);
   const costDifference = summary.cost_saving_vs_blanket_mens;
   const noEmailCount = allocations.filter((row) => row.assigned_arm === "No E-Mail").length;
 
@@ -117,6 +130,37 @@ export default function Results({ result, page, setPage }) {
     setPage(1);
   }
 
+  async function handleExport(type) {
+    setExporting(type);
+    setExportError("");
+    await Promise.resolve();
+    const extension = type === "excel" ? "xlsx" : type;
+    const fileName = `econocausal_allocations_${getLocalDateString()}.${extension}`;
+    const exportOptions = {
+      rows: sortedAllocations,
+      summary,
+      planSummary,
+      costMens: result.costMens,
+      costWomens: result.costWomens,
+      valuePerConversion,
+      drift,
+    };
+    try {
+      if (type === "csv") downloadCsv(sortedAllocations, fileName);
+      if (type === "excel") await downloadExcel(exportOptions, fileName);
+      if (type === "pdf") await downloadPdf(exportOptions, fileName);
+    } catch (error) {
+      setExportError(`Could not create the ${type.toUpperCase()} file: ${error.message}`);
+    } finally {
+      setExporting("");
+    }
+  }
+
+  const noRows = isExportDisabled(sortedAllocations);
+  const pdfTooltip = sortedAllocations.length > 1000
+    ? `PDF shows the first 1,000 of ${formatNumber(sortedAllocations.length)} rows. Use CSV or Excel for the full list.`
+    : `Download PDF (${formatNumber(sortedAllocations.length)} rows)`;
+
   return (
     <section className="results-section" aria-live="polite">
       <div className="section-heading results-heading">
@@ -126,6 +170,13 @@ export default function Results({ result, page, setPage }) {
         </div>
         <span className="result-count">{formatNumber(summary.n_customers)} customers analyzed</span>
       </div>
+
+      <article className="plan-summary-card">
+        <h3>Plan summary</h3>
+        <ul>
+          {planSummary.map((sentence) => <li key={sentence}>{sentence}</li>)}
+        </ul>
+      </article>
 
       <div className="result-grid">
         <article className="result-card result-card-primary">
@@ -159,7 +210,7 @@ export default function Results({ result, page, setPage }) {
         <div className="allocation-header">
           <div>
             <h3>Customer explorer</h3>
-            <p>Search or filter customers. Est. uplift is the best of both arm estimates, including customers not selected within budget.</p>
+            <p>Search or filter customers. Best-arm uplift is the larger of the Mens and Womens estimates; estimated revenue uses the assigned arm, which may be different when e-mail costs differ.</p>
           </div>
           <div className="allocation-tools">
             <span className="table-count">{formatNumber(filteredAllocations.length)} customers</span>
@@ -213,8 +264,39 @@ export default function Results({ result, page, setPage }) {
                 onChange={(event) => { setSearch(event.target.value); setPage(1); }}
               />
             </label>
+            <div className="download-group" role="group" aria-label="Download filtered and sorted allocations">
+              <span>Download</span>
+              <button
+                type="button"
+                title={`Download CSV (${formatNumber(sortedAllocations.length)} rows)`}
+                aria-label={`Download CSV (${formatNumber(sortedAllocations.length)} rows)`}
+                disabled={noRows || Boolean(exporting)}
+                onClick={() => handleExport("csv")}
+              >
+                {exporting === "csv" ? "Preparing…" : "CSV"}
+              </button>
+              <button
+                type="button"
+                title={`Download Excel (${formatNumber(sortedAllocations.length)} rows)`}
+                aria-label={`Download Excel (${formatNumber(sortedAllocations.length)} rows)`}
+                disabled={noRows || Boolean(exporting)}
+                onClick={() => handleExport("excel")}
+              >
+                {exporting === "excel" ? "Preparing…" : "Excel"}
+              </button>
+              <button
+                type="button"
+                title={pdfTooltip}
+                aria-label={pdfTooltip}
+                disabled={noRows || Boolean(exporting)}
+                onClick={() => handleExport("pdf")}
+              >
+                {exporting === "pdf" ? "Preparing…" : "PDF"}
+              </button>
+            </div>
           </div>
         </div>
+        {exportError && <p className="export-error" role="alert">{exportError}</p>}
 
         {filteredAllocations.length ? (
           <>
@@ -227,19 +309,21 @@ export default function Results({ result, page, setPage }) {
                         key={column.key}
                         aria-sort={sortColumn === column.key ? sortDirection : "none"}
                       >
-                        <button
-                          type="button"
-                          className="sort-button"
-                          onClick={() => sortBy(column.key)}
-                          aria-label={`Sort by ${column.label}`}
-                        >
-                          {column.label}
-                          <span aria-hidden="true">
-                            {sortColumn === column.key
-                              ? sortDirection === "ascending" ? " ↑" : " ↓"
-                              : " ↕"}
-                          </span>
-                        </button>
+                        <span title={column.title}>
+                          <button
+                            type="button"
+                            className="sort-button"
+                            onClick={() => sortBy(column.key)}
+                            aria-label={`Sort by ${column.label}`}
+                          >
+                            {column.label}
+                            <span aria-hidden="true">
+                              {sortColumn === column.key
+                                ? sortDirection === "ascending" ? " ↑" : " ↓"
+                                : " ↕"}
+                            </span>
+                          </button>
+                        </span>
                       </th>
                     ))}
                   </tr>

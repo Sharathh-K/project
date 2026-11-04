@@ -45,3 +45,11 @@ export function optimizeCampaign(payload) {
     body: JSON.stringify(payload),
   });
 }
+
+export function checkDrift(customers) {
+  return request("/drift", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ customers }),
+  });
+}
