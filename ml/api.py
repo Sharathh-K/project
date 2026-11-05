@@ -14,6 +14,11 @@ app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"],
 RES = Path("EconoCausal/results")
 
 
+def money(n):
+    """Format dollars, with the minus sign before the $ sign."""
+    return ("-$" if n < 0 else "$") + f"{abs(n):,.0f}"
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -29,8 +34,6 @@ def prescribe(budget: float = 5000, types: str = "5,10", count: int | None = Non
     if r.returncode:
         return {"error": r.stderr[-500:]}
     s = json.loads((RES / "prescription_summary.json").read_text())
-       def money(n):
-        return ("-$" if n < 0 else "$") + f"{abs(n):,.0f}"
     s["message"] = (f"This strategy gains {money(s['net_gain'])} compared to "
                     f"{money(s['blanket_gain'])} for blanket targeting.")
     return s
