@@ -53,7 +53,7 @@ Every scoring request compares incoming baseline characteristics with the **44,8
 | `recency`, `history` | KS distance between numeric distributions |
 | `mens`, `womens`, `newbie`, `zip_code`, `channel` | Total variation distance between category proportions |
 
-A distance of **0.1 or more** triggers the screening rule. Previously unseen categories also trigger review. Batches below **100 customers** receive an `insufficient_data` status because small samples provide weak distribution evidence.
+A distance of **0.1 or more** triggers the screening rule. Previously unseen categories also trigger review. Batches below **100 customers** receive an `insufficient_data` overall status because small samples provide weak distribution evidence. Per-feature warnings are still shown, but the overall status takes precedence; it must not be interpreted as a clean drift check.
 
 **Simple example:** suppose the training customers mostly shopped online, but a new list contains mostly phone shoppers. The detector warns that the incoming population looks different and deserves investigation.
 
@@ -122,7 +122,7 @@ cd ..
 python -m uvicorn api.main:app --host 127.0.0.1 --port 8002
 ```
 
-Open **http://127.0.0.1:8002/**. The same process serves the built dashboard and API. After setup, `sh scripts/run_local.sh` provides the startup checks and launches the service.
+Open **http://127.0.0.1:8002/** for the dashboard and **http://127.0.0.1:8002/docs** for interactive API documentation. The same process serves the built dashboard and API. After setup, `sh scripts/run_local.sh` provides the startup checks and launches the service.
 
 Keep the terminal running. The localhost address is not an expiring hosted link: it works while the local server and computer are running. Teammates need their own checkout, dependencies, generated models and server.
 
@@ -150,3 +150,5 @@ The application recommends emails but never sends them. It does not persist uplo
 Week 4 connected the analysis and optimizer into a usable application. A user can now submit customer information, obtain predictions and warnings, and download a budget-respecting campaign plan.
 
 > “In Week 4, I packaged the trained causal models in a FastAPI service and connected them to the React dashboard. Every scoring request checks whether the new customers look different from the training customers. The application then predicts email effects, applies the budget optimizer and explains the plan in simple language. I verified prediction consistency and budget limits while keeping statistical uncertainty visible.”
+
+**Documentation review:** 5 November 2026. The verification table records the earlier executed checks, including the 31 October review. This documentation-only update cross-checked the implementation and saved evidence; it did not rerun training or claim new test results.

@@ -14,7 +14,7 @@ I studied customer information such as previous spending, months since the last 
 
 The analysis checked missing values, repeated records, spending distributions, response rates and differences between treatment groups. There were no missing values. Duplicate-looking records were retained because the dataset does not contain a verified customer identifier that proves they represent repeated customers.
 
-Purchases were rare—578 customers purchased—so website visits were selected as the primary outcome. Purchasing and spending were retained as secondary outcomes.
+Purchases were rare—578 customers purchased. Website visits were used as the primary outcome, while the rarity of purchases was recorded as a limitation on purchase and spending analysis. Purchasing and spending were retained as secondary outcomes.
 
 ## 2. Preprocessing and feature engineering
 
@@ -27,6 +27,10 @@ I corrected the area-label spelling inconsistency and created useful features:
 I separated the data into 70% training and 30% testing, preserving the treatment-group proportions. Categorical encoding was fitted only on training data.
 
 Only information available before the campaign was used as model input. Email assignment and campaign outcomes were excluded from the customer-feature matrix to prevent information leakage.
+
+The split contains **44,800 training rows and 19,200 test rows**. The original `history` and `recency` were retained alongside their engineered versions. `mens` and `womens` represent previous merchandise-category purchases, not customer gender. Generated customer IDs are row references, not verified personal identifiers.
+
+Descriptive EDA examined the full dataset before model evaluation. The test set is excluded from model fitting, but the overall findings remain exploratory rather than a completely unseen confirmatory experiment.
 
 ## 3. Causal graphing using DoWhy
 
@@ -49,3 +53,13 @@ The budget controls show how many emails a budget could cover. Optimal allocatio
 ## Week 1 outcome
 
 The project established a reproducible data-preparation process, explicit causal assumptions and an initial dashboard. Although the project theme includes discounts and dynamic pricing, the supplied dataset supports email-treatment analysis; it does not contain discount amounts for estimating discount-specific effects.
+
+## Deliverables and review explanation
+
+- [Notebook 01: EDA](../01_eda.ipynb).
+- [Notebook 02: preprocessing and feature engineering](../02_preprocessing_feature_engineering.ipynb).
+- [Notebook 03: causal graphs](../03_causal_graph.ipynb).
+
+> “In Week 1, I checked the customer data, prepared information known before the campaign, and drew the causal assumptions. I kept email assignment and later outcomes separate from model inputs. The mock example explains why starting differences can mislead us; the real email study used random assignment.”
+
+**Documentation review:** 5 November 2026. This write-up describes the Week 1 scope within the completed project; later allocation and API functionality belongs to Weeks 3 and 4.

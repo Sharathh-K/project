@@ -50,6 +50,8 @@ Compared the optimized plan with:
 
 Blanket strategies that exceed the budget are marked infeasible. The notebook also explores different budgets and assumed email costs, and saves the resulting tables and figures.
 
+The random benchmark is an analytical expectation: choose the same number of customers uniformly and give each a 50/50 chance of either email. It does not require exactly half to receive each type, and it is not an observed campaign or a single simulated random draw.
+
 These are comparisons using model predictions. A higher optimized prediction does not independently prove that a real campaign will earn more revenue.
 
 ### D. Built the Budget allocation dashboard page
@@ -99,7 +101,7 @@ These figures were checked against `dashboard/public/results/optimization_report
 | Equal-contact random strategy: predicted additional revenue | $24,125.30 |
 | Cost of emailing all 64,000 customers | $6,400.00 — exceeds the budget |
 
-**Interpretation:** the solver produces an optimal plan for the specified prediction-based, equal-cost problem. These are retrospective planning estimates, not observed campaign returns. Revenue less email cost is not profit because product margins and other costs are unavailable.
+**Interpretation:** the solver produces an optimal plan for the specified prediction-based, equal-cost problem. These are retrospective planning estimates, not observed campaign returns. Revenue less email cost is not profit because product margins and other costs are unavailable. The objective maximizes additional revenue, not revenue minus contact cost: a positive effect smaller than the assumed email cost can still be selected if capacity remains. A net-return objective would be a different optimization requirement.
 
 ## 5. Validation and limitations
 
@@ -128,3 +130,5 @@ Week 3 turned causal-effect estimates into an actionable, budget-respecting cust
 > “In Week 3, I used the predicted email effects from our causal models to recommend one email or no email for each customer. I implemented a SciPy optimizer that maximizes predicted additional spending without exceeding the marketing budget. I built a dashboard allocation table and tested the decisions against an independent calculation. The results are planning predictions, so I explain their uncertainty rather than promise guaranteed profit.”
 
 The later REST API, drift detector and live scoring workflow are documented separately in the [Week 4 write-up](WEEK_4_WRITEUP.md).
+
+**Documentation review:** 5 November 2026. Numbers above describe the saved default run, not a newly executed campaign or newly retrained model. See [final review evidence](FINAL_REVIEW_CHECKS.json) for the earlier recorded verification.
