@@ -9,6 +9,7 @@ export function StatusBadge({ online }) {
 
 const NAV_ITEMS = [
   { id: "overview", label: "Overview", icon: "⌂" },
+  { id: "workspace", label: "Workspace", icon: "▦" },
   { id: "planner", label: "Campaign planner", icon: "◫" },
   { id: "insights", label: "Insights", icon: "⌁" },
   { id: "methodology", label: "Methodology", icon: "◉" },

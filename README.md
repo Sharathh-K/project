@@ -40,7 +40,7 @@ The experiment does **not** record discount amounts, discount costs or profit ma
 | Double ML models (LinearDML, CausalForestDML, ForestDRLearner) | Done, ForestDRLearner used downstream |
 | Budget optimization (SciPy linear program) | Done and validated |
 | REST API (FastAPI) and data drift detector | Done |
-| Dashboard (React) | Day 2 complete: campaign planning, Qini/uplift evaluation and customer explorer |
+| Dashboard (React) | Day 3 complete: campaign planning, evaluation, customer lookup, budget scenarios and segment summaries |
 
 ## Key Results
 
@@ -91,6 +91,7 @@ Interactive docs: http://127.0.0.1:8000/docs
 | `GET /health` | Model loaded, arms and expected input fields |
 | `POST /predict` | Estimated increase in purchase probability for a Mens and a Womens e-mail, per customer |
 | `POST /optimize` | Best e-mail per customer under a budget, with expected revenue, shadow price and cost saving vs e-mailing everyone |
+| `POST /budget-scenarios` | Compares 2–7 budget limits for the same upload; scores customers once and optimizes each requested budget |
 | `GET /evaluation/curves` | Held-out experiment Qini/uplift curves by e-mail arm, with 90% customer-bootstrap bands |
 | `POST /drift` | Compares an upload with the training data and warns if customer behavior looks different |
 
@@ -134,8 +135,12 @@ different API address. Restart Vite after changing the environment file.
   estimated incremental purchases/revenue and a model-estimate caveat.
 - Export the current filtered and sorted allocations as CSV or Excel in full;
   PDF exports include up to the first 1,000 rows and explain when truncated.
+  Results initially sort by assigned-arm estimated revenue, descending;
+  exports retain that current order. CSV and Excel retain four decimal places
+  for estimated revenue, while PDF is compressed.
 - Check data drift after upload without blocking optimization, show a warning
-  banner under the upload and with plan results, and surface the status on Overview.
+  banner under the upload and with plan results, offer a retry when unavailable,
+  and surface the status on Overview.
 - Provide Qini and uplift curves for each e-mail arm vs. no e-mail, with a
   random-targeting reference and 90% bootstrap confidence bands. Qini bands
   show the pointwise interval for advantage over the random-targeting line;
@@ -161,6 +166,23 @@ different API address. Restart Vite after changing the environment file.
 - The plan summary explains the allocation and user assumptions. Data drift is
   checked when a CSV is uploaded; warnings never block running or exporting a
   plan and include expandable feature and uplift details.
+- Step 1 and the API/how-it-works sidebar remain on the top row; Step 2 spans
+  the page below, followed by full-width drift and plan results. The four
+  assumptions align in one row on wide screens and adapt at responsive
+  breakpoints.
+- Overview includes a browser-generated data quality checklist and column
+  profile (including rejected CSVs), workflow progress through export, and a
+  latest-plan budget/arm snapshot. Post-campaign outcome columns are noted as
+  ignored and are never sent to the API.
+- The Workspace includes a single-customer uplift lookup using `POST /predict`,
+  budget/revenue scenarios using `POST /budget-scenarios` (one customer-scoring
+  pass per comparison request), and latest-plan average uplift summaries by ZIP,
+  channel, new-customer status, and recency/history bands. Segment summaries
+  include customer counts and warn that subgroup differences may be noise.
+- Budget scenarios show five tested budget limits, their planned spend and
+  estimated extra revenue, plus marginal estimates between adjacent limits.
+  These scenario comparisons are estimates under the current cost and
+  revenue-per-conversion assumptions, not guaranteed returns.
 
 Campaign uploads accept up to 100,000 rows, matching the API limit. Evaluation
 curves use the held-out experimental test data, which has treatment assignments

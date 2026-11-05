@@ -2,7 +2,7 @@ function driftRows(data) {
   return [...(data.features ?? []), ...(data.predictions ?? [])];
 }
 
-export default function DriftBanner({ drift }) {
+export default function DriftBanner({ drift, onRetry }) {
   if (!drift || drift.status === "idle") return null;
 
   if (drift.status === "checking") {
@@ -18,7 +18,12 @@ export default function DriftBanner({ drift }) {
     return (
       <div className="drift-banner drift-unavailable" role="status">
         <span aria-hidden="true">i</span>
-        <p>Drift check unavailable: {drift.error}</p>
+        <div className="drift-content">
+          <p>Drift check unavailable: {drift.error}</p>
+          <button type="button" className="retry-button" onClick={onRetry} disabled={!onRetry}>
+            Retry drift check
+          </button>
+        </div>
       </div>
     );
   }

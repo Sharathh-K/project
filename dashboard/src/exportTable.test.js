@@ -5,6 +5,7 @@ import {
   isExportDisabled,
   limitPdfRows,
   mapAllocationRows,
+  pdfTruncationNote,
 } from "./exportTable.js";
 
 const sample = {
@@ -42,9 +43,15 @@ describe("allocation exports", () => {
       0.3457,
       0.4568,
       0.4568,
-      1.23,
+      1.234,
       0.1,
     ]);
+  });
+
+  it("preserves four decimals for exported assigned-arm revenue", () => {
+    const mapped = mapAllocationRows([sample])[0];
+    expect(mapped[8]).toBe(1.234);
+    expect(buildCsv([sample]).split("\r\n")[1].split(",")[8]).toBe("1.2340");
   });
 
   it("builds UTF-8-BOM CSV with RFC 4180 quoting and CRLF records", () => {
@@ -71,6 +78,7 @@ describe("allocation exports", () => {
     expect(limited.rows[999].customer_id).toBe("999");
     expect(limited.totalRows).toBe(1200);
     expect(limited.truncated).toBe(true);
+    expect(pdfTruncationNote(12800)).toBe("PDF shows the first 1,000 of 12,800 rows. Use CSV or Excel for the full list.");
     expect(limitPdfRows(rows.slice(0, 1000)).truncated).toBe(false);
   });
 

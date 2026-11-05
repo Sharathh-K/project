@@ -1,9 +1,10 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { checkDrift, optimizeCampaign } from "../api.js";
 import Results from "../components/Results.jsx";
 import DriftBanner from "../components/DriftBanner.jsx";
 import { defaultBudgetForCustomerCount, formatCurrency, formatNumber } from "../format.js";
 import { parseCustomerCsv } from "../csv.js";
+import { profileCustomerCsv, profileCustomerRows } from "../dataQuality.js";
 
 function Field({ id, label, value, onChange, min, step, hint }) {
   return (
@@ -36,6 +37,8 @@ export default function Planner({
   setResult,
   drift,
   setDrift,
+  setQuality,
+  onExported,
   apiOnline,
   apiError,
   health,
@@ -43,7 +46,9 @@ export default function Planner({
   onRetry,
 }) {
   const fileInput = useRef(null);
+  const fileRequestRef = useRef(0);
   const driftRequestRef = useRef(0);
+  const previousApiOnlineRef = useRef(apiOnline);
   const [fileName, setFileName] = useState("");
   const [fileError, setFileError] = useState("");
   const [runError, setRunError] = useState("");
@@ -76,22 +81,60 @@ export default function Planner({
     setSettings((current) => ({ ...current, [name]: value }));
   }
 
-  async function loadFile(file) {
+  async function checkUploadedDrift(rows) {
     const requestId = driftRequestRef.current + 1;
     driftRequestRef.current = requestId;
+    setDrift({ status: "checking", data: null, error: "" });
+    try {
+      const data = await checkDrift(rows);
+      if (requestId === driftRequestRef.current) {
+        setDrift({ status: "done", data, error: "" });
+      }
+    } catch (error) {
+      if (requestId === driftRequestRef.current) {
+        setDrift({ status: "unavailable", data: null, error: error.message });
+      }
+    }
+  }
+
+  useEffect(() => {
+    const wasOnline = previousApiOnlineRef.current;
+    previousApiOnlineRef.current = apiOnline;
+    if (apiOnline && !wasOnline && drift.status === "unavailable" && customers.length) {
+      checkUploadedDrift(customers);
+    }
+  }, [apiOnline, drift.status, customers]);
+
+  async function loadFile(file) {
+    const requestId = fileRequestRef.current + 1;
+    fileRequestRef.current = requestId;
+    driftRequestRef.current += 1;
     setFileError("");
     setRunError("");
     setResult(null);
     setCustomers([]);
+    setQuality(null);
+    onExported(false);
     setFileName("");
     setPage(1);
     setDrift({ status: "idle", data: null, error: "" });
     if (!file) return;
 
     setIsParsing(true);
+    const qualityPromise = profileCustomerCsv(file)
+      .then((report) => {
+        if (requestId === fileRequestRef.current) setQuality(report);
+        return report;
+      })
+      .catch((error) => {
+        if (requestId === fileRequestRef.current) {
+          setQuality(profileCustomerRows([], [], [{ message: `Could not profile the CSV: ${error.message}` }]));
+        }
+        return null;
+      });
     try {
       const parsed = await parseCustomerCsv(file);
-      if (requestId !== driftRequestRef.current) return;
+      if (requestId !== fileRequestRef.current) return;
       setCustomers(parsed);
       setFileName(file.name);
       if (!budgetEditedRef.current) {
@@ -100,22 +143,20 @@ export default function Planner({
           budget: defaultBudgetForCustomerCount(parsed.length),
         }));
       }
-      setDrift({ status: "checking", data: null, error: "" });
-      checkDrift(parsed)
-        .then((data) => {
-          if (requestId === driftRequestRef.current) {
-            setDrift({ status: "done", data, error: "" });
-          }
-        })
-        .catch((error) => {
-          if (requestId === driftRequestRef.current) {
-            setDrift({ status: "unavailable", data: null, error: error.message });
-          }
-        });
+      checkUploadedDrift(parsed);
     } catch (error) {
-      if (requestId === driftRequestRef.current) setFileError(error.message);
+      if (requestId === fileRequestRef.current) {
+        setFileError(error.message);
+        const report = await qualityPromise;
+        if (requestId === fileRequestRef.current) {
+          setQuality({
+            ...(report ?? profileCustomerRows([], [], [{ message: error.message }])),
+            validationError: error.message,
+          });
+        }
+      }
     } finally {
-      if (requestId === driftRequestRef.current) setIsParsing(false);
+      if (requestId === fileRequestRef.current) setIsParsing(false);
     }
   }
 
@@ -131,6 +172,7 @@ export default function Planner({
 
     setRunError("");
     setResult(null);
+    onExported(false);
     setIsRunning(true);
     const payload = {
       customers,
@@ -172,7 +214,7 @@ export default function Planner({
 
       <section className="planner-layout">
         <div className="planner-main">
-          <form className="planner-card" onSubmit={handleRun}>
+          <section className="planner-card">
             <div className="section-heading">
               <div>
                 <p className="eyebrow">STEP 1</p>
@@ -213,7 +255,7 @@ export default function Planner({
               onChange={handleFileChange}
               aria-label="Choose a customer CSV file"
             />
-            <DriftBanner drift={drift} />
+            <DriftBanner drift={drift} onRetry={() => checkUploadedDrift(customers)} />
             {fileError && <p className="form-error" role="alert">{fileError}</p>}
 
             <div className="schema-hint">
@@ -221,87 +263,7 @@ export default function Planner({
               <span>recency, history, mens, womens, newbie, zip_code, channel</span>
               <small>Optional: Customer ID (or customer_id), history_floor. Other columns are ignored.</small>
             </div>
-
-            <div className="form-divider" />
-            <div className="section-heading budget-heading">
-              <div>
-                <p className="eyebrow">STEP 2</p>
-                <h2>Set your campaign assumptions</h2>
-                <p className="section-copy">Set your budget, e-mail costs, and estimated revenue per conversion.</p>
-              </div>
-              <span className="step-number">02</span>
-            </div>
-
-            <div className="budget-field">
-              <Field
-                id="budget"
-                label="Total campaign budget"
-                value={settings.budget}
-                onChange={(value) => updateSetting("budget", value)}
-                min="0.01"
-                step="0.01"
-                hint={customers.length
-                  ? `Suggested from upload: ${formatCurrency(Number(defaultBudgetForCustomerCount(customers.length)))} ($0.025 per customer). Your edits are kept on future uploads.`
-                  : "Maximum total spend across both e-mail types."}
-              />
-              {budgetCoversAll && (
-                <p className="budget-context-hint" role="status">
-                  Your budget can cover one e-mail to every customer at the lower unit cost ({formatCurrency(lowestEmailCost)} each).
-                </p>
-              )}
-            </div>
-            <div className="cost-grid">
-              <Field
-                id="cost-mens"
-                label="Cost per Mens e-mail"
-                value={settings.costMens}
-                onChange={(value) => updateSetting("costMens", value)}
-                min="0.01"
-                step="0.01"
-                hint="Default assumption: $0.10"
-              />
-              <Field
-                id="cost-womens"
-                label="Cost per Womens e-mail"
-                value={settings.costWomens}
-                onChange={(value) => updateSetting("costWomens", value)}
-                min="0.01"
-                step="0.01"
-                hint="Default assumption: $0.15"
-              />
-              <Field
-                id="value-per-conversion"
-                label="Revenue per conversion"
-                value={settings.valuePerConversion}
-                onChange={(value) => updateSetting("valuePerConversion", value)}
-                min="0.01"
-                step="0.01"
-                hint="Default assumption: $113.83"
-              />
-            </div>
-
-            {settingsError && <p className="form-error" role="alert">{settingsError}</p>}
-            {runError && <p className="form-error" role="alert">Could not run optimization: {runError}</p>}
-
-            <div className="form-footer">
-              <p>Your data is sent to the configured EconoCausal API for scoring and optimization.</p>
-              <button
-                type="submit"
-                className="button button-primary"
-                disabled={!customers.length || Boolean(settingsError) || !apiOnline || isRunning || isParsing}
-              >
-                {isRunning ? "Optimizing…" : "Run optimization"}
-                {!isRunning && <span aria-hidden="true">→</span>}
-              </button>
-            </div>
-          </form>
-
-          {result && (
-            <>
-              <DriftBanner drift={drift} />
-              <Results result={result} page={page} setPage={setPage} drift={drift} />
-            </>
-          )}
+          </section>
         </div>
 
         <aside className="planner-aside">
@@ -348,6 +310,95 @@ export default function Planner({
             <p><strong>Keep the evidence in context.</strong> Predicted uplift and revenue are model estimates. E-mail costs and revenue per conversion are assumptions.</p>
           </section>
         </aside>
+
+        <div className="planner-lower">
+          <form className="planner-card settings-card" onSubmit={handleRun}>
+            <div className="section-heading budget-heading">
+              <div>
+                <p className="eyebrow">STEP 2</p>
+                <h2>Set your campaign assumptions</h2>
+                <p className="section-copy">Set your budget, e-mail costs, and estimated revenue per conversion.</p>
+              </div>
+              <span className="step-number">02</span>
+            </div>
+
+            <div className="settings-grid">
+              <div className="budget-field">
+                <Field
+                  id="budget"
+                  label="Total campaign budget"
+                  value={settings.budget}
+                  onChange={(value) => updateSetting("budget", value)}
+                  min="0.01"
+                  step="0.01"
+                  hint={customers.length
+                    ? `Suggested from upload: ${formatCurrency(Number(defaultBudgetForCustomerCount(customers.length)))} ($0.025 per customer). Your edits are kept on future uploads.`
+                    : "Maximum total spend across both e-mail types."}
+                />
+                {budgetCoversAll && (
+                  <p className="budget-context-hint" role="status">
+                    Your budget can cover one e-mail to every customer at the lower unit cost ({formatCurrency(lowestEmailCost)} each).
+                  </p>
+                )}
+              </div>
+              <Field
+                id="cost-mens"
+                label="Cost per Mens e-mail"
+                value={settings.costMens}
+                onChange={(value) => updateSetting("costMens", value)}
+                min="0.01"
+                step="0.01"
+                hint="Default assumption: $0.10"
+              />
+              <Field
+                id="cost-womens"
+                label="Cost per Womens e-mail"
+                value={settings.costWomens}
+                onChange={(value) => updateSetting("costWomens", value)}
+                min="0.01"
+                step="0.01"
+                hint="Default assumption: $0.15"
+              />
+              <Field
+                id="value-per-conversion"
+                label="Revenue per conversion"
+                value={settings.valuePerConversion}
+                onChange={(value) => updateSetting("valuePerConversion", value)}
+                min="0.01"
+                step="0.01"
+                hint="Default assumption: $113.83"
+              />
+            </div>
+
+            {settingsError && <p className="form-error" role="alert">{settingsError}</p>}
+            {runError && <p className="form-error" role="alert">Could not run optimization: {runError}</p>}
+
+            <div className="form-footer">
+              <p>Your data is sent to the configured EconoCausal API for scoring and optimization.</p>
+              <button
+                type="submit"
+                className="button button-primary"
+                disabled={!customers.length || Boolean(settingsError) || !apiOnline || isRunning || isParsing}
+              >
+                {isRunning ? "Optimizing…" : "Run optimization"}
+                {!isRunning && <span aria-hidden="true">→</span>}
+              </button>
+            </div>
+          </form>
+
+          {result && (
+            <div className="planner-results">
+              <DriftBanner drift={drift} onRetry={() => checkUploadedDrift(customers)} />
+              <Results
+                result={result}
+                page={page}
+                setPage={setPage}
+                drift={drift}
+                onExported={() => onExported(true)}
+              />
+            </div>
+          )}
+        </div>
       </section>
     </>
   );

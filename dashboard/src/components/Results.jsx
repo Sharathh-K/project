@@ -75,7 +75,7 @@ const TABLE_COLUMNS = [
   },
 ];
 
-export default function Results({ result, page, setPage, drift }) {
+export default function Results({ result, page, setPage, drift, onExported }) {
   const { data, valuePerConversion } = result;
   const allocations = data.allocations;
   const [selectedArm, setSelectedArm] = useState("All arms");
@@ -83,8 +83,8 @@ export default function Results({ result, page, setPage, drift }) {
   const [selectedChannel, setSelectedChannel] = useState("All channels");
   const [upliftFilter, setUpliftFilter] = useState("All uplift");
   const [search, setSearch] = useState("");
-  const [sortColumn, setSortColumn] = useState("customer_id");
-  const [sortDirection, setSortDirection] = useState("ascending");
+  const [sortColumn, setSortColumn] = useState("expected_revenue");
+  const [sortDirection, setSortDirection] = useState("descending");
   const [exporting, setExporting] = useState("");
   const [exportError, setExportError] = useState("");
   const filteredAllocations = useMemo(() => allocations.filter((row) => {
@@ -149,6 +149,7 @@ export default function Results({ result, page, setPage, drift }) {
       if (type === "csv") downloadCsv(sortedAllocations, fileName);
       if (type === "excel") await downloadExcel(exportOptions, fileName);
       if (type === "pdf") await downloadPdf(exportOptions, fileName);
+      onExported?.();
     } catch (error) {
       setExportError(`Could not create the ${type.toUpperCase()} file: ${error.message}`);
     } finally {

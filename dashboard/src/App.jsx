@@ -3,6 +3,10 @@ import { getHealth } from "./api.js";
 import Planner from "./pages/Planner.jsx";
 import Sidebar, { StatusBadge } from "./components/Sidebar.jsx";
 import { formatCurrency, formatNumber } from "./format.js";
+import DataQualityReport from "./components/DataQualityReport.jsx";
+import WorkflowStatus from "./components/WorkflowStatus.jsx";
+import PlanSnapshot from "./components/PlanSnapshot.jsx";
+import Workspace from "./pages/Workspace.jsx";
 
 const EvaluationCurves = lazy(() => import("./components/EvaluationCurves.jsx"));
 
@@ -25,6 +29,12 @@ const PAGE_DETAILS = {
     eyebrow: "CAMPAIGN WORKSPACE",
     title: "Make every campaign dollar count.",
     description: "Upload your customer data, set your budget, and build an e-mail plan from estimated incremental impact.",
+  },
+  workspace: {
+    breadcrumb: "Workspace",
+    eyebrow: "CAMPAIGN DECISION WORKSPACE",
+    title: "Explore customers, budgets, and segments.",
+    description: "Compare model estimates for an individual customer, test budget limits, and review descriptive segment summaries.",
   },
   insights: {
     breadcrumb: "Insights",
@@ -62,7 +72,7 @@ function PageIntro({ activeTab }) {
   );
 }
 
-function Overview({ customers, result, drift, onOpenPlanner }) {
+function Overview({ customers, result, drift, quality, exported, onOpenPlanner, onOpenInsights }) {
   const summary = result?.data?.summary;
   const driftLabel = drift.status === "checking"
     ? "Checking..."
@@ -102,6 +112,19 @@ function Overview({ customers, result, drift, onOpenPlanner }) {
           <span>{driftDescription}</span>
         </article>
       </div>
+      <DataQualityReport quality={quality} onOpenPlanner={onOpenPlanner} />
+      <WorkflowStatus
+        customers={customers}
+        quality={quality}
+        drift={drift}
+        result={result}
+        exported={exported}
+      />
+      <PlanSnapshot
+        result={result}
+        onOpenPlanner={onOpenPlanner}
+        onOpenInsights={onOpenInsights}
+      />
       <div className="overview-callout">
         <div>
           <h2>Ready to plan a campaign?</h2>
@@ -168,6 +191,8 @@ export default function App() {
   const [settings, setSettings] = useState(INITIAL_SETTINGS);
   const [result, setResult] = useState(null);
   const [drift, setDrift] = useState({ status: "idle", data: null, error: "" });
+  const [quality, setQuality] = useState(null);
+  const [exported, setExported] = useState(false);
   const budgetEditedRef = useRef(false);
   const [apiOnline, setApiOnline] = useState(false);
   const [apiError, setApiError] = useState("");
@@ -221,7 +246,10 @@ export default function App() {
               customers={customers}
               result={result}
               drift={drift}
+              quality={quality}
+              exported={exported}
               onOpenPlanner={() => changeTab("planner")}
+              onOpenInsights={() => changeTab("insights")}
             />
           </div>
 
@@ -236,11 +264,23 @@ export default function App() {
               setResult={setResult}
               drift={drift}
               setDrift={setDrift}
+              setQuality={setQuality}
+              onExported={setExported}
               apiOnline={apiOnline}
               apiError={apiError}
               health={health}
               healthLoading={healthLoading}
               onRetry={refreshApi}
+            />
+          </div>
+
+          <div hidden={activeTab !== "workspace"}>
+            <Workspace
+              customers={customers}
+              settings={settings}
+              result={result}
+              apiOnline={apiOnline}
+              onOpenPlanner={() => changeTab("planner")}
             />
           </div>
 

@@ -1,3 +1,4 @@
+import math
 import sys
 import threading
 from contextlib import asynccontextmanager
@@ -8,7 +9,7 @@ import joblib
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))          # engine code: dml_pipeline, optimizer, drift
@@ -69,6 +70,22 @@ class OptimizeRequest(PredictRequest):
     include_all: bool = Field(False, description="return every customer, not only the Persuadables")
 
 
+class BudgetScenariosRequest(PredictRequest):
+    budgets: list[float] = Field(min_length=2, max_length=7, description="ascending budget limits to compare")
+    cost_mens: float = Field(0.10, gt=0, description="dollars per Mens e-mail")
+    cost_womens: float = Field(0.15, gt=0, description="dollars per Womens e-mail")
+    value_per_conversion: float = Field(113.83, gt=0, description="average revenue of one conversion, dollars")
+
+    @field_validator("budgets")
+    @classmethod
+    def validate_budgets(cls, budgets):
+        if any(not math.isfinite(budget) or budget < 0 for budget in budgets):
+            raise ValueError("budgets must be finite, non-negative amounts")
+        if len(set(budgets)) != len(budgets):
+            raise ValueError("budgets must not contain duplicates")
+        return sorted(budgets)
+
+
 # ---------- helpers ----------
 def score(model, customers):
     """Customers -> table with estimated uplift for each e-mail and the best option."""
@@ -81,6 +98,32 @@ def score(model, customers):
     df["ite_womens"] = rec["ite_womens"].to_numpy()
     df["best_segment"] = rec["best_segment"].to_numpy()
     return df
+
+
+def build_budget_scenarios(scored, budgets, cost, value_per_conversion):
+    """Optimize multiple budget limits against one pre-scored customer table."""
+    scenarios = []
+    previous_budget = None
+    previous_revenue = None
+    for budget in budgets:
+        _, summary = optimize_campaign(scored, cost, budget, value_per_conversion)
+        expected_revenue = summary["total_expected_revenue"]
+        scenarios.append({
+            "budget": float(budget),
+            "total_cost": summary["total_cost"],
+            "total_expected_revenue": expected_revenue,
+            "mens_emails": summary["mens_emails"],
+            "womens_emails": summary["womens_emails"],
+            "selected_customers": summary["mens_emails"] + summary["womens_emails"],
+            "marginal_revenue_per_budget_dollar": (
+                (expected_revenue - previous_revenue) / (budget - previous_budget)
+                if previous_budget is not None and budget > previous_budget
+                else None
+            ),
+        })
+        previous_budget = budget
+        previous_revenue = expected_revenue
+    return scenarios
 
 
 # ---------- endpoints ----------
@@ -118,10 +161,27 @@ def optimize(req: OptimizeRequest):
         "cost_saving_vs_blanket_mens": n * req.cost_mens - summary["total_cost"],
     })
 
-    cols = ["customer_id", "zip_code", "channel", "newbie", "assigned_arm", "ite_mens", "ite_womens",
+    cols = ["customer_id", "recency", "history", "zip_code", "channel", "newbie", "assigned_arm", "ite_mens", "ite_womens",
             "expected_uplift", "expected_revenue", "cost", "group"]
     rows = plan if req.include_all else plan[plan["group"] == "Persuadable"]
     return {"summary": summary, "allocations": rows[cols].to_dict("records")}
+
+
+@app.post("/budget-scenarios")
+def budget_scenarios(req: BudgetScenariosRequest):
+    """Compare campaign budgets while scoring uploaded customers only once."""
+    scored = score(app.state.model, req.customers)
+    cost = {"Mens E-Mail": req.cost_mens, "Womens E-Mail": req.cost_womens}
+    try:
+        scenarios = build_budget_scenarios(
+            scored,
+            req.budgets,
+            cost,
+            req.value_per_conversion,
+        )
+    except RuntimeError as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
+    return {"n_customers": len(scored), "scenarios": scenarios}
 
 
 @app.get("/evaluation/curves")

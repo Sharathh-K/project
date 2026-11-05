@@ -38,6 +38,22 @@ export function getEvaluationCurves() {
   return request("/evaluation/curves");
 }
 
+export function predictCustomer(customer) {
+  return request("/predict", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ customers: [customer] }),
+  });
+}
+
+export function getBudgetScenarios(payload) {
+  return request("/budget-scenarios", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
 export function optimizeCampaign(payload) {
   return request("/optimize", {
     method: "POST",

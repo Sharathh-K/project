@@ -1,4 +1,4 @@
-import { formatCurrency, formatUplift } from "./format.js";
+import { formatCurrency, formatNumber, formatUplift } from "./format.js";
 
 export const EXPORT_HEADERS = [
   "Customer ID",
@@ -25,9 +25,13 @@ export function mapAllocationRows(rows) {
     ROUND_TO((row.ite_mens ?? 0) * 100, 4),
     ROUND_TO((row.ite_womens ?? 0) * 100, 4),
     ROUND_TO(Math.max(row.ite_mens ?? 0, row.ite_womens ?? 0) * 100, 4),
-    ROUND_TO(row.expected_revenue, 2),
+    ROUND_TO(row.expected_revenue, 4),
     ROUND_TO(row.cost, 2),
   ]);
+}
+
+export function pdfTruncationNote(rowCount) {
+  return `PDF shows the first 1,000 of ${formatNumber(rowCount)} rows. Use CSV or Excel for the full list.`;
 }
 
 function protectSpreadsheetText(value) {
@@ -41,8 +45,10 @@ function csvCell(value, columnIndex) {
   if (typeof value === "number") {
     text = columnIndex >= 5 && columnIndex <= 7
       ? value.toFixed(4)
-      : columnIndex >= 8
-        ? value.toFixed(2)
+      : columnIndex === 8
+        ? value.toFixed(4)
+        : columnIndex === 9
+          ? value.toFixed(2)
         : String(value);
   } else {
     text = protectSpreadsheetText(value);
@@ -105,7 +111,8 @@ export function buildExcelSheets({ rows, summary, planSummary, costMens, costWom
   const header = EXPORT_HEADERS.map((value) => ({ value, fontWeight: "bold" }));
   const data = allocationRows.map((row) => row.map((value, index) => {
     if (index >= 5 && index <= 7) return { value, type: Number, format: "0.00" };
-    if (index >= 8) return { value, type: Number, format: "$0.00" };
+    if (index === 8) return { value, type: Number, format: "$0.0000" };
+    if (index === 9) return { value, type: Number, format: "$0.00" };
     return value;
   }));
   const widths = [20, 14, 18, 12, 20, 18, 20, 22, 34, 14].map((width) => ({ width }));
@@ -172,7 +179,7 @@ export async function downloadPdf({ rows, summary, planSummary, costMens, costWo
     import("jspdf"),
     import("jspdf-autotable"),
   ]);
-  const doc = new JsPDF({ orientation: "landscape", format: "a4" });
+  const doc = new JsPDF({ orientation: "landscape", format: "a4", compress: true });
   const date = getLocalDateString();
   let y = 16;
   doc.setFontSize(18);
@@ -224,7 +231,7 @@ export async function downloadPdf({ rows, summary, planSummary, costMens, costWo
       noteY = 15;
     }
     doc.setFontSize(8);
-    doc.text(`PDF shows the first 1,000 of ${pdfRows.totalRows} rows. Use CSV or Excel for the full list.`, 10, noteY);
+    doc.text(pdfTruncationNote(pdfRows.totalRows), 10, noteY);
   }
 
   const pageCount = doc.getNumberOfPages();
