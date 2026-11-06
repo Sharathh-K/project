@@ -44,6 +44,7 @@ export default function Planner({
   health,
   healthLoading,
   onRetry,
+  onOpenDataOverview,
 }) {
   const fileInput = useRef(null);
   const fileRequestRef = useRef(0);
@@ -256,7 +257,14 @@ export default function Planner({
               aria-label="Choose a customer CSV file"
             />
             <DriftBanner drift={drift} onRetry={() => checkUploadedDrift(customers)} />
-            {fileError && <p className="form-error" role="alert">{fileError}</p>}
+            {fileError && (
+              <p className="form-error" role="alert">
+                {fileError}{" "}
+                <button type="button" className="form-error-link" onClick={onOpenDataOverview}>
+                  See Overview → Data quality for every problem
+                </button>
+              </p>
+            )}
 
             <div className="schema-hint">
               <strong>Required columns</strong>

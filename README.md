@@ -1,256 +1,258 @@
-# EconoCausal: Dynamic Pricing via Double Machine Learning
+# EconoCausal
 
-## Project Overview
+### Budget-aware e-mail campaign optimization with causal machine learning
 
-EconoCausal is a causal machine learning project that supports data-driven marketing decisions. Rather than only predicting which customers are likely to purchase, it estimates how a customer's chance of buying changes when they receive a marketing treatment. These estimates are used to decide where a limited campaign budget is best spent.
+EconoCausal estimates how Mens and Womens promotional e-mails change customer
+conversion behavior, then uses those estimates to build a campaign plan under a
+fixed budget. It brings causal analysis, model evaluation, constrained
+optimization, a REST API, and a React dashboard into one workflow.
 
-The project combines causal inference, machine learning, evaluation, optimization, a REST API and a dashboard in one workflow.
+> **Decision support, not a guarantee:** individual treatment effects and
+> revenue are model estimates. Campaign costs and revenue per conversion are
+> assumptions supplied to the optimizer.
 
-## Business Problem
+---
 
-Traditional predictive models estimate outcomes such as purchase probability or expected spending. Customers who are already likely to purchase may not need a marketing push. EconoCausal estimates the incremental effect of the treatment, to separate likely purchasers from customers whose behavior changes because of the campaign ("Persuadables").
+## Contents
 
-The decision supported here is which customers receive a Mens e-mail, a Womens e-mail or no e-mail under a strict budget. The dataset contains no discounts, so this implementation does not assign discount amounts. Recommendations are estimates, not guarantees of individual customer behavior.
+- [Project at a glance](#-project-at-a-glance)
+- [Dataset](#-dataset)
+- [Key findings](#-key-findings)
+- [Repository structure](#-repository-structure)
+- [Getting started](#-getting-started)
+- [Run the dashboard](#-run-the-dashboard)
+- [API reference](#-api-reference)
+- [Modeling workflow](#-modeling-workflow)
+- [Limitations and responsible use](#-limitations-and-responsible-use)
+- [Technology](#-technology)
 
-## Dataset
+## 📌 Project at a glance
 
-The project uses the **Kevin Hillstrom MineThatData E-Mail Analytics / Data Mining Challenge (2008)** dataset: 64,000 customer records from a randomized e-mail marketing experiment, with customer characteristics, an assigned campaign group and outcomes measured after the campaign.
+Traditional response models predict who is likely to purchase. EconoCausal
+focuses on a different question: **whose behavior is estimated to change because
+of a campaign e-mail?** The optimizer uses the estimated incremental effects to
+choose one of three actions for each customer:
 
-### Main Variables
+1. Send a Mens e-mail.
+2. Send a Womens e-mail.
+3. Send no e-mail.
 
-- `recency`: time since the customer's most recent purchase.
-- `history_segment`: category of historical customer spending.
-- `history`: historical spending amount.
-- `mens`, `womens`: indicators of prior men's / women's merchandise purchasing.
-- `zip_code`: customer geographic category (Urban, Suburban, Rural).
-- `newbie`: indicator for a new customer.
-- `channel`: customer acquisition channel (Phone, Web, Multichannel).
-- `segment`: assigned marketing group (`Mens E-Mail`, `Womens E-Mail`, `No E-Mail`).
-- `visit`, `conversion`, `spend`: outcomes measured after the campaign.
-- `history_floor` (derived): 1 when `history` equals the dataset minimum ($29.99), otherwise 0.
+The plan respects the total campaign budget and assigns at most one e-mail per
+customer. It does not model discounts: the experiment contains no discount
+amount, discount cost, or profit-margin information.
 
-The experiment does **not** record discount amounts, discount costs or profit margins. E-mail campaign effects are estimated from the data. The optimization step uses clearly labeled assumptions (e-mail cost and revenue per conversion). Simulated effects must not be presented as findings from this dataset.
+## 🗂️ Dataset
 
-## Project Status
+The analysis uses the **Kevin Hillstrom MineThatData E-Mail Analytics / Data
+Mining Challenge (2008)** dataset: 64,000 customers from a randomized e-mail
+marketing experiment. It includes pre-campaign customer characteristics,
+randomized campaign assignments, and post-campaign outcomes.
 
-| Component | Status |
+| Variable | Description |
 |---|---|
-| Data preparation and EDA | Done |
-| Causal graph (DoWhy) and audit | Done |
-| Double ML models (LinearDML, CausalForestDML, ForestDRLearner) | Done, ForestDRLearner used downstream |
-| Budget optimization (SciPy linear program) | Done and validated |
-| REST API (FastAPI) and data drift detector | Done |
-| Dashboard (React) | Day 3 complete: campaign planning, evaluation, customer lookup, budget scenarios and segment summaries |
+| `recency` | Time since the customer's most recent purchase |
+| `history_segment` | Historical customer-spending category |
+| `history` | Historical spending amount |
+| `mens`, `womens` | Indicators of prior Mens/Womens merchandise purchases |
+| `zip_code` | Urban, Suburban, or Rural customer category |
+| `newbie` | Indicator for a new customer |
+| `channel` | Phone, Web, or Multichannel |
+| `segment` | Randomized campaign assignment: Mens E-Mail, Womens E-Mail, or No E-Mail |
+| `visit`, `conversion`, `spend` | Outcomes measured after the campaign |
+| `history_floor` | Derived indicator for customers at the dataset's minimum history value |
 
-## Key Results
+Only pre-campaign features are used to estimate customer-level effects.
+Post-campaign outcomes are reserved for evaluation, not used as model inputs.
 
-- **Average effects (randomized experiment):** Mens e-mail +0.68 percentage points of conversion (95% CI 0.50 to 0.86), Womens e-mail +0.31 points (95% CI 0.15 to 0.47).
-- **Optimization at a $1,600 budget** (25% of the cost of e-mailing all 64,000 customers with Mens): the plan sends 15,922 Mens and 52 Womens e-mails. Predicted extra revenue is $20,666, and each extra $1 of budget returns about $10 at the margin (shadow price).
-- **Robustness:** with the audit's lower-bound effects or an average of two forest models, keeping the original plan loses only 0.12% and 0.37% of revenue.
-- **Validation on real outcomes** (inverse propensity weighting with bootstrap intervals): the plan's incremental revenue is about $11.2k to $11.6k (95% intervals roughly $2k to $22k), about half of the predicted figure. Random Mens targeting scored $15.5k to $16.1k. The difference between the plan and random targeting is about -$4.3k to -$4.4k, and its 95% interval includes 0. Targeting by predicted uplift is therefore not shown to beat random targeting with this data. The average Mens effect is confirmed by the experiment.
+## 📊 Key findings
 
-## Repository Structure
+- **Average experimental effects:** Mens e-mail increased conversion by an
+  estimated **0.68 percentage points** (95% CI: 0.50–0.86); Womens e-mail by
+  **0.31 points** (95% CI: 0.15–0.47).
+- **Illustrative $1,600 budget plan:** the optimizer assigns 15,922 Mens and 52
+  Womens e-mails. Its predicted extra revenue is approximately **$20,666**,
+  based on the configured e-mail costs and revenue-per-conversion assumption.
+- **Robustness checks:** under the audited lower-bound effects and an average
+  of two forest models, the original plan's estimated revenue decreases by
+  0.12% and 0.37%, respectively.
+- **Evaluation against observed outcomes:** inverse-propensity-weighted
+  estimates put the plan's incremental revenue around $11.2k–$11.6k, with
+  uncertainty intervals that include zero. Random Mens targeting is estimated
+  at $15.5k–$16.1k. The plan has not been shown to outperform random targeting
+  with this dataset.
 
-```
+These are experiment- and analysis-specific results, not guaranteed future
+campaign performance.
+
+## 🏗️ Repository structure
+
+```text
 project/
-├── api/             REST API (FastAPI): main.py
-├── src/             engine code: dml_pipeline.py, optimizer.py, drift.py
-├── Models/          saved ForestDRLearner pipeline and drift reference profile
-├── Notebooks/       EDA, causal graph and audit, Double ML models, budget optimization
-├── Data/            Raw and Processed data
-├── Reports/         audit outputs
-├── tests/           smoke and drift tests
-├── dashboard/       React app (in progress)
-├── requirements.txt
-└── requirements-notebooks.txt
+├── api/                         # FastAPI application and HTTP endpoints
+│   ├── __init__.py
+│   └── main.py
+├── dashboard/                   # Vite + React user interface
+│   ├── src/
+│   │   ├── components/           # Results, charts, explorer, status and reports
+│   │   ├── pages/                # Campaign planner and campaign tools
+│   │   ├── api.js                # API client
+│   │   ├── csv.js                # Browser-side CSV parsing and validation
+│   │   ├── dataQuality.js        # Upload quality profiling
+│   │   ├── exportTable.js        # CSV, Excel and PDF exports
+│   │   ├── App.jsx
+│   │   └── styles.css
+│   ├── .env.example              # Dashboard API URL example
+│   ├── package.json
+│   └── vite.config.js
+├── Data/
+│   ├── Raw/                      # Source data
+│   └── Processed/                # Analysis-ready data
+├── Models/
+│   ├── forestdr_pipe.joblib      # Trained ForestDRLearner pipeline
+│   └── drift_reference.json      # Training-data drift profile
+├── Notebooks/                    # EDA, causal audit, modeling and optimization
+├── Reports/
+│   ├── causal_audit/
+│   ├── figures/
+│   └── eda_summary.md
+├── src/                          # Modeling, evaluation, optimization and drift
+│   ├── dml_pipeline.py
+│   ├── drift.py
+│   ├── evaluation.py
+│   └── optimizer.py
+├── tests/                        # API, drift, evaluation and scenario tests
+├── requirements.txt              # API and runtime dependencies
+├── requirements-notebooks.txt    # Additional analysis dependencies
+└── README.md
 ```
 
-## Setup
+## 🚀 Getting started
 
-Developed with Python 3.14 on Windows.
+### Prerequisites
 
-```
+- Python 3.14
+- Node.js and npm
+- Graphviz is required only for the causal-graph notebook.
+
+### Install Python dependencies
+
+From the project root, create and activate a virtual environment:
+
+```powershell
 python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt              # API, optimizer and tests
-pip install -r requirements-notebooks.txt    # only if you want to run the notebooks
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 ```
 
-The causal-graph notebook uses Graphviz, which has to be installed separately on your system.
+Install notebook dependencies only if you plan to run the notebooks:
 
-## Run the API
-
+```powershell
+python -m pip install -r requirements-notebooks.txt
 ```
+
+### Start the API
+
+Run from the project root:
+
+```powershell
 uvicorn api.main:app --reload
 ```
 
-Interactive docs: http://127.0.0.1:8000/docs
+The API is available at `http://127.0.0.1:8000`. Interactive OpenAPI
+documentation is available at `http://127.0.0.1:8000/docs`.
 
-| Endpoint | What it does |
-|---|---|
-| `GET /health` | Model loaded, arms and expected input fields |
-| `POST /predict` | Estimated increase in purchase probability for a Mens and a Womens e-mail, per customer |
-| `POST /optimize` | Best e-mail per customer under a budget, with expected revenue, shadow price and cost saving vs e-mailing everyone |
-| `POST /budget-scenarios` | Compares 2–7 budget limits for the same upload; scores customers once and optimizes each requested budget |
-| `GET /evaluation/curves` | Held-out experiment Qini/uplift curves by e-mail arm, with 90% customer-bootstrap bands |
-| `POST /drift` | Compares an upload with the training data and warns if customer behavior looks different |
+### Run the tests
 
-`history_floor` is optional in requests and is computed from `history` when omitted.
+Run the backend tests from the project root:
 
-## Run the dashboard
-
-In a second terminal, start the React app:
-
+```powershell
+python -m pytest
 ```
+
+The drift reference profile can be regenerated with:
+
+```powershell
+python src/drift.py
+```
+
+## 🖥️ Run the dashboard
+
+In another terminal:
+
+```powershell
 cd dashboard
-npm install
+npm ci
 npm run dev
 ```
 
-Open the Vite URL (by default http://localhost:5173). The dashboard checks the API at
-`http://127.0.0.1:8000`; set `VITE_API_BASE_URL` in `dashboard/.env.local` to use a
-different API address. Restart Vite after changing the environment file.
+Open the Vite URL printed in the terminal (usually
+`http://localhost:5173`). The dashboard expects the API at
+`http://127.0.0.1:8000` by default. To use a different API URL, copy
+`dashboard/.env.example` to `dashboard/.env.local`, set
+`VITE_API_BASE_URL`, and restart Vite.
 
-### Dashboard requirements and delivery
+The dashboard supports browser-side CSV validation and data-quality profiling,
+budget-constrained campaign planning, customer lookup, budget scenarios,
+segment summaries, evaluation curves, and CSV/Excel/PDF exports.
 
-#### Day 1: campaign planning
+## 🔌 API reference
 
-- Provide navigation between the campaign workspace and its methodology.
-- Parse and validate customer CSVs in the browser before sending them to the API.
-- Accept the model's pre-campaign fields (`recency`, `history`, `mens`, `womens`,
-  `newbie`, `zip_code`, `channel`), with optional `Customer ID`/`customer_id` and
-  `history_floor`. Ignore other columns, including post-campaign outcomes.
-- Show API connection and model status, and report connection, validation and
-  optimization errors instead of showing success-shaped fallbacks.
-- Suggest a total budget of $0.025 per uploaded customer unless the user has
-  already edited the budget. Let the user set per-arm e-mail costs and revenue
-  per conversion, defaulting to $0.10, $0.15 and $113.83 respectively. The
-  results disclaimer displays the revenue-per-conversion value submitted.
-- Call `POST /optimize` and show selected and unselected customer counts, the
-  per-arm totals, and paginated allocations that can be filtered by customer,
-  e-mail arm, ZIP code, channel and the best estimated uplift across either
-  e-mail arm. Allocation columns can be sorted and include the uploaded ZIP,
-  channel and newbie fields, per-arm uplift estimates and final recommendation.
-- Show a plain-English plan summary with spend comparison, e-mail counts,
-  estimated incremental purchases/revenue and a model-estimate caveat.
-- Export the current filtered and sorted allocations as CSV or Excel in full;
-  PDF exports include up to the first 1,000 rows and explain when truncated.
-  Results initially sort by assigned-arm estimated revenue, descending;
-  exports retain that current order. CSV and Excel retain four decimal places
-  for estimated revenue, while PDF is compressed.
-- Check data drift after upload without blocking optimization, show a warning
-  banner under the upload and with plan results, offer a retry when unavailable,
-  and surface the status on Overview.
-- Provide Qini and uplift curves for each e-mail arm vs. no e-mail, with a
-  random-targeting reference and 90% bootstrap confidence bands. Qini bands
-  show the pointwise interval for advantage over the random-targeting line;
-  the Qini area interval supplies the overall verdict. Curves use the labeled
-  held-out randomized test set, not customer uploads without outcomes.
-- Keep estimates and the cost/revenue assumptions clearly labeled as such.
-- Let the sidebar navigate between overview, campaign planner and methodology.
+| Method and route | Purpose |
+|---|---|
+| `GET /health` | Reports model readiness, supported campaign arms, and input fields |
+| `POST /predict` | Estimates Mens and Womens e-mail effects for customer features |
+| `POST /optimize` | Builds a budget-constrained per-customer campaign plan |
+| `POST /budget-scenarios` | Compares 2–7 budget limits while scoring customers once per request |
+| `GET /evaluation/curves` | Returns held-out Qini and uplift curves with 90% bootstrap intervals |
+| `POST /drift` | Compares uploaded customer data with the training-data profile |
 
-#### Day 2: evaluation and customer explorer
+`history_floor` is optional in API requests. When omitted, it is derived from
+`history`.
 
-- `GET /evaluation/curves` scores the held-out randomized test set and returns
-  Qini/uplift curves for each e-mail arm versus no e-mail, with 90% bootstrap
-  confidence bands and a random-targeting reference. Qini gap bands compare
-  each bootstrap Qini curve with its own random baseline.
-- The Insights tab visualizes the held-out curves with Plotly and gives a
-  plain-language takeaway based on whether the Qini area interval excludes 0.
-- The customer explorer displays the optimizer's full allocation, with filters
-  for customer ID, e-mail arm, ZIP code, channel and positive/zero/negative
-  best-arm estimated uplift. All output columns are sortable.
-- CSV, Excel and PDF downloads contain all rows matching the current explorer
-  filters and sort order; PDF is capped at 1,000 rows. Excel provides separate
-  Summary and Allocations sheets.
-- The plan summary explains the allocation and user assumptions. Data drift is
-  checked when a CSV is uploaded; warnings never block running or exporting a
-  plan and include expandable feature and uplift details.
-- Step 1 and the API/how-it-works sidebar remain on the top row; Step 2 spans
-  the page below, followed by full-width drift and plan results. The four
-  assumptions align in one row on wide screens and adapt at responsive
-  breakpoints.
-- Overview includes a browser-generated data quality checklist and column
-  profile (including rejected CSVs), workflow progress through export, and a
-  latest-plan budget/arm snapshot. Post-campaign outcome columns are noted as
-  ignored and are never sent to the API.
-- The Workspace includes a single-customer uplift lookup using `POST /predict`,
-  budget/revenue scenarios using `POST /budget-scenarios` (one customer-scoring
-  pass per comparison request), and latest-plan average uplift summaries by ZIP,
-  channel, new-customer status, and recency/history bands. Segment summaries
-  include customer counts and warn that subgroup differences may be noise.
-- Budget scenarios show five tested budget limits, their planned spend and
-  estimated extra revenue, plus marginal estimates between adjacent limits.
-  These scenario comparisons are estimates under the current cost and
-  revenue-per-conversion assumptions, not guaranteed returns.
+## 🔬 Modeling workflow
 
-Campaign uploads accept up to 100,000 rows, matching the API limit. Evaluation
-curves use the held-out experimental test data, which has treatment assignments
-and observed outcomes; they are not computed from campaign uploads that contain
-only pre-campaign customer features.
+1. **Prepare the data:** validate the dataset and separate pre-campaign
+   characteristics from post-campaign outcomes.
+2. **Estimate causal effects:** compare each e-mail arm with the No E-Mail
+   control group using EconML Double Machine Learning estimators. The
+   ForestDRLearner pipeline is used downstream.
+3. **Audit assumptions:** use DoWhy to define the causal graph, identify the
+   estimand, and run refutation checks. A causal graph describes assumptions;
+   it does not prove them.
+4. **Evaluate policies:** use randomized experimental outcomes, uplift and
+   Qini curves, bootstrap uncertainty, and inverse propensity weighting.
+5. **Optimize assignments:** use a SciPy linear program to maximize estimated
+   incremental revenue subject to the budget and one-e-mail-per-customer
+   constraints.
+6. **Serve and monitor:** expose predictions and campaign plans through
+   FastAPI; use population stability index checks to flag changes in uploaded
+   customer features and predicted uplifts.
 
-## Tests
+The optimizer's default assumptions are **$0.10 per Mens e-mail**, **$0.15 per
+Womens e-mail**, and **$113.83 revenue per conversion**. They are editable in
+the dashboard and should be treated as business inputs, not experimentally
+measured campaign costs or profit.
 
-```
-python src/drift.py          # builds Models/drift_reference.json
-python -m tests.smoke_test
-python -m tests.drift_test
-python -m pytest tests/evaluation_test.py
-```
+## ⚠️ Limitations and responsible use
 
-## Methodology
+- Individual treatment effects are uncertain estimates, not promises about an
+  individual customer's behavior.
+- The project has not established that uplift-based targeting beats random
+  targeting on this dataset. A positive model-estimated return is not proof of
+  incremental business value.
+- Campaign cost, conversion value, and optimization objectives materially
+  affect the resulting plan.
+- The experiment supports e-mail campaign analysis; it does not identify the
+  effects of discounts or specific discount amounts.
+- Refutation checks can reveal sensitivity, but cannot rule out unobserved
+  confounding or guarantee transportability to a new population.
+- Uploaded customer data should be handled according to applicable privacy,
+  security, and organizational requirements.
 
-### 1. Data Preparation
+## 🧰 Technology
 
-Load the dataset, validate the schema and check data quality. Only information available before campaign assignment is used as a pre-treatment feature. Visits, conversions and campaign-period spending are outcomes, not controls.
-
-### 2. Causal Inference
-
-Each e-mail group is compared with the `No E-Mail` control group, with `conversion` as the main outcome. The original campaign is randomized, so assignment supports causal analysis. The design is still checked before drawing conclusions.
-
-### 3. Double Machine Learning with EconML
-
-Double ML models the outcome and treatment-assignment processes and combines them to estimate treatment effects while adjusting for observed pre-treatment features. Four estimators were compared (LinearDML with LightGBM, LinearDML with a random forest, CausalForestDML, ForestDRLearner). The ForestDRLearner is used downstream, with cross-fitted (out-of-fold) effects for all 64,000 customers.
-
-### 4. Causal Modeling and Robustness with DoWhy
-
-DoWhy is used to specify the causal graph, identify the effect and run refutation checks. A causal graph documents assumptions and does not prove them. Refutation tests can reveal sensitivity but cannot rule out unobserved confounding.
-
-### 5. Evaluation and Uplift Analysis
-
-Evaluation uses treatment-effect estimates with uncertainty, uplift and Qini curves, and comparisons with experimental baselines. Policies are evaluated with inverse propensity weighting, which respects the randomized design.
-
-### 6. Optimization
-
-A linear program (SciPy `linprog`, HiGHS) assigns each customer a Mens e-mail, a Womens e-mail or no e-mail. It maximizes expected extra revenue (estimated uplift x revenue per conversion) subject to total e-mail cost within the budget and at most one e-mail per customer. Assumptions: $0.10 per Mens e-mail, $0.15 per Womens e-mail, $113.83 revenue per conversion (average spend of converters). A budget curve, shadow price and robustness scenarios accompany the main result.
-
-### 7. API and Drift Detection
-
-The API serves predictions and the optimizer. The drift detector compares each upload with the training data using the population stability index (below 0.10 ok, 0.10 to 0.25 watch, 0.25 and above alert), also on the predicted uplifts. Uploads under 500 rows are flagged as too small. It detects changes in who the customers are and in the predicted uplifts. It cannot see a change in how customers respond without outcome data.
-
-### 8. Dashboard
-
-The React dashboard presents uploads and budget settings, uplift and Qini curves, customer-level estimates, the allocation table and plain-language summaries. It distinguishes observed experimental results from model estimates and assumptions.
-
-## Technology Stack
-
-- **Python:** pandas, NumPy, scikit-learn, LightGBM
-- **EconML:** causal machine learning and treatment-effect estimation
-- **DoWhy:** causal graphs, identification and refutation checks
-- **SciPy:** budget optimization
-- **FastAPI and Uvicorn:** REST API
-- **React and Plotly:** dashboard
-
-## Limitations and Responsible Interpretation
-
-- Treatment effects are estimates, not guarantees for individual customers.
-- Predicted revenue is optimistic. Report it as a range, with the experiment-based estimate as the central figure.
-- Targeting by predicted uplift is not shown to beat random targeting with this data. Most of the value comes from choosing the cheaper, stronger e-mail and from setting the budget.
-- Causal conclusions depend on the experimental design, correct treatment and outcome definitions, data quality and analysis choices. Passing refutation tests does not prove the absence of unobserved confounding.
-- The Hillstrom data supports e-mail campaign analysis, not the effect of specific discount amounts. E-mail costs and revenue per conversion are assumptions.
-- Budget optimization is meaningful only when its objective, costs, constraints and uncertainty are defined.
-- Customer data should be handled according to applicable privacy, security and organizational requirements.
-
-## Summary
-
-EconoCausal combines causal inference and machine learning to study the incremental effect of marketing e-mails and to allocate a limited budget. The Hillstrom experiment supports the estimation, evaluation and optimization, and the API and dashboard present the results while separating evidence from assumptions.
+- **Causal ML:** EconML, scikit-learn, LightGBM, DoWhy
+- **Data and optimization:** pandas, NumPy, SciPy
+- **API:** FastAPI, Pydantic, Uvicorn
+- **Dashboard:** React, Vite, Plotly
+- **Testing:** pytest, Vitest

@@ -7,13 +7,15 @@ async function request(path, options) {
   try {
     response = await fetch(`${API_BASE_URL}${path}`, options);
   } catch (error) {
+    if (error.name === "AbortError") throw error;
     throw new Error(`Cannot reach the EconoCausal API at ${API_BASE_URL}. ${error.message}`);
   }
 
   let body;
   try {
     body = await response.json();
-  } catch {
+  } catch (error) {
+    if (error.name === "AbortError") throw error;
     throw new Error(`The API returned an unreadable response (HTTP ${response.status}).`);
   }
 
@@ -46,11 +48,12 @@ export function predictCustomer(customer) {
   });
 }
 
-export function getBudgetScenarios(payload) {
+export function getBudgetScenarios(payload, { signal } = {}) {
   return request("/budget-scenarios", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+    signal,
   });
 }
 

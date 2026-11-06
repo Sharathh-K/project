@@ -8,21 +8,21 @@ export function StatusBadge({ online }) {
 }
 
 const NAV_ITEMS = [
-  { id: "overview", label: "Overview", icon: "⌂" },
-  { id: "workspace", label: "Workspace", icon: "▦" },
   { id: "planner", label: "Campaign planner", icon: "◫" },
+  { id: "overview", label: "Data overview", icon: "⌂" },
+  { id: "workspace", label: "Campaign tools", icon: "▦" },
   { id: "insights", label: "Insights", icon: "⌁" },
   { id: "methodology", label: "Methodology", icon: "◉" },
 ];
 
-export default function Sidebar({ activeTab, onTabChange, apiOnline }) {
+export default function Sidebar({ activeTab, onTabChange, apiOnline, collapsed = false }) {
   return (
-    <aside className="sidebar">
+    <aside id="primary-sidebar" className="sidebar" hidden={collapsed}>
       <button
         type="button"
         className="brand"
         aria-label="EconoCausal home"
-        onClick={() => onTabChange("overview")}
+        onClick={() => onTabChange("planner")}
       >
         <span className="brand-mark">E</span>
         <span className="brand-name">Econo<span>Causal</span></span>

@@ -2,13 +2,15 @@ const STATUS_LABELS = {
   done: "Done",
   current: "Current",
   waiting: "Waiting",
+  unavailable: "Unavailable",
+  "needs-review": "Needs review",
 };
 
 function WorkflowStep({ number, label, status }) {
   return (
     <li className={`workflow-step workflow-${status}`}>
       <span className="workflow-icon" aria-hidden="true">
-        {status === "done" ? "✓" : number}
+        {status === "done" ? "✓" : status === "needs-review" ? "!" : status === "unavailable" ? "—" : number}
       </span>
       <div>
         <strong>{label}</strong>
@@ -18,19 +20,22 @@ function WorkflowStep({ number, label, status }) {
   );
 }
 
-export default function WorkflowStatus({ customers, quality, drift, result, exported }) {
-  const hasUpload = Boolean(quality);
+export function getWorkflowStatuses({ customers, quality, drift, result, exported }) {
   const acceptedUpload = customers.length > 0;
   const uploadStatus = acceptedUpload
     ? "done"
-    : hasUpload
-      ? "current"
+    : quality?.status === "rejected"
+      ? "needs-review"
       : "current";
   const driftStatus = drift.status === "checking"
     ? "current"
-    : drift.status === "done" || drift.status === "unavailable"
-      ? "done"
-      : "waiting";
+    : drift.status === "unavailable"
+      ? "unavailable"
+      : drift.status === "done"
+        ? drift.data?.status === "ok"
+          ? "done"
+          : "needs-review"
+        : "waiting";
   const optimizationStatus = result
     ? "done"
     : acceptedUpload
@@ -41,6 +46,18 @@ export default function WorkflowStatus({ customers, quality, drift, result, expo
     : result
       ? "current"
       : "waiting";
+
+  return { uploadStatus, driftStatus, optimizationStatus, exportStatus };
+}
+
+export default function WorkflowStatus({ customers, quality, drift, result, exported }) {
+  const { uploadStatus, driftStatus, optimizationStatus, exportStatus } = getWorkflowStatuses({
+    customers,
+    quality,
+    drift,
+    result,
+    exported,
+  });
 
   return (
     <section className="overview-section workflow-section">

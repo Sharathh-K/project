@@ -57,7 +57,7 @@ function ColumnProfile({ column }) {
 export default function DataQualityReport({ quality, onOpenPlanner }) {
   if (!quality) {
     return (
-      <section className="overview-section data-quality-section">
+      <section className="overview-section data-quality-section" id="data-quality-report">
         <div className="overview-section-heading">
           <div>
             <p className="eyebrow">DATA QUALITY</p>
@@ -80,7 +80,7 @@ export default function DataQualityReport({ quality, onOpenPlanner }) {
       ? "quality-status-warn"
       : "quality-status-pass";
   return (
-    <section className="overview-section data-quality-section">
+    <section className="overview-section data-quality-section" id="data-quality-report">
       <div className="overview-section-heading">
         <div>
           <p className="eyebrow">DATA QUALITY</p>

@@ -1,46 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { getBudgetScenarios } from "../api.js";
 import { formatCurrency, formatNumber } from "../format.js";
 
+const BudgetScenarioPlot = lazy(() => import("./BudgetScenarioPlot.jsx"));
+const REQUEST_TIMEOUT_MS = 90_000;
+
 function scenarioBudgets(baseBudget) {
   return [0, 0.5, 1, 1.5, 2].map((multiple) => baseBudget * multiple);
-}
-
-function makeChartPoints(scenarios) {
-  const maxBudget = Math.max(...scenarios.map((scenario) => scenario.budget), 1);
-  const maxRevenue = Math.max(...scenarios.map((scenario) => scenario.total_expected_revenue), 1);
-  return scenarios.map((scenario, index) => ({
-    ...scenario,
-    x: 48 + (scenario.budget / maxBudget) * 504,
-    y: 170 - (scenario.total_expected_revenue / maxRevenue) * 140,
-    index,
-  }));
-}
-
-function RevenueCurve({ scenarios }) {
-  const points = makeChartPoints(scenarios);
-  const line = points.map((point) => `${point.x},${point.y}`).join(" ");
-  return (
-    <figure className="scenario-curve">
-      <svg viewBox="0 0 600 210" role="img" aria-labelledby="scenario-chart-title scenario-chart-description" preserveAspectRatio="none">
-        <title id="scenario-chart-title">Estimated revenue by budget scenario</title>
-        <desc id="scenario-chart-description">
-          A line chart of budget limits and their model-estimated extra revenue. Exact values are listed below the chart.
-        </desc>
-        <line x1="48" y1="170" x2="564" y2="170" className="scenario-axis" />
-        <line x1="48" y1="30" x2="48" y2="170" className="scenario-axis" />
-        <polyline points={line} className="scenario-curve-line" />
-        {points.map((point) => (
-          <circle key={point.index} cx={point.x} cy={point.y} r="5" className="scenario-curve-point">
-            <title>{`${formatCurrency(point.budget)} budget: ${formatCurrency(point.total_expected_revenue)} estimated extra revenue`}</title>
-          </circle>
-        ))}
-        <text x="48" y="195" className="scenario-axis-label">Budget limit →</text>
-        <text x="12" y="25" className="scenario-axis-label">↑ Revenue</text>
-      </svg>
-      <figcaption>Budget limit compared with estimated incremental revenue; planned spend can be below the limit.</figcaption>
-    </figure>
-  );
 }
 
 function plateauMessage(scenarios) {
@@ -55,11 +21,12 @@ function plateauMessage(scenarios) {
   return "No near-flat step was detected in the tested budgets. Compare the marginal estimates below; these are model estimates, not guarantees.";
 }
 
-export default function BudgetScenarios({ customers, settings, result, apiOnline }) {
+export default function BudgetScenarios({ customers, settings, result, apiOnline, isDark }) {
   const [report, setReport] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const requestRef = useRef(0);
+  const requestControllerRef = useRef(null);
   const baseBudget = Number(settings.budget) > 0
     ? Number(settings.budget)
     : Number(result?.data?.summary?.budget) || 1;
@@ -67,6 +34,8 @@ export default function BudgetScenarios({ customers, settings, result, apiOnline
 
   useEffect(() => {
     requestRef.current += 1;
+    requestControllerRef.current?.abort();
+    requestControllerRef.current = null;
     setReport(null);
     setError("");
     setLoading(false);
@@ -81,6 +50,9 @@ export default function BudgetScenarios({ customers, settings, result, apiOnline
   async function runScenarios() {
     const requestId = requestRef.current + 1;
     requestRef.current = requestId;
+    const controller = new AbortController();
+    requestControllerRef.current = controller;
+    const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     setError("");
     setReport(null);
     setLoading(true);
@@ -91,12 +63,23 @@ export default function BudgetScenarios({ customers, settings, result, apiOnline
         cost_mens: Number(settings.costMens),
         cost_womens: Number(settings.costWomens),
         value_per_conversion: Number(settings.valuePerConversion),
-      });
+      }, { signal: controller.signal });
       if (requestId === requestRef.current) setReport(response);
     } catch (requestError) {
-      if (requestId === requestRef.current) setError(requestError.message);
+      if (requestId === requestRef.current) {
+        const timedOut = controller.signal.aborted
+          || requestError.name === "AbortError"
+          || /HTTP 50[234]|gateway timeout|timed out|request timeout/i.test(requestError.message);
+        setError(timedOut
+          ? "Budget scenario comparison timed out or was stopped by the API/hosting proxy. Large files can take about a minute; try again, or compare a smaller upload."
+          : requestError.message);
+      }
     } finally {
-      if (requestId === requestRef.current) setLoading(false);
+      window.clearTimeout(timeoutId);
+      if (requestId === requestRef.current) {
+        requestControllerRef.current = null;
+        setLoading(false);
+      }
     }
   }
 
@@ -122,11 +105,18 @@ export default function BudgetScenarios({ customers, settings, result, apiOnline
 
       {!customers.length && <p className="workspace-muted">Upload a valid customer CSV in Campaign planner to compare budget scenarios.</p>}
       {!apiOnline && customers.length > 0 && <p className="workspace-muted" role="status">Connect to the API to compare scenarios.</p>}
+      {customers.length > 0 && (
+        <p className="workspace-muted scenario-runtime-note">
+          Large files can take about a minute to compare. The request times out after 90 seconds; hosting proxies may impose a shorter limit.
+        </p>
+      )}
       {error && <p className="form-error" role="alert">Could not compare budget scenarios: {error}</p>}
 
       {scenarios.length > 0 && (
         <div className="scenario-results" aria-live="polite">
-          <RevenueCurve scenarios={scenarios} />
+          <Suspense fallback={<div className="evaluation-message">Loading interactive chart…</div>}>
+            <BudgetScenarioPlot scenarios={scenarios} isDark={isDark} />
+          </Suspense>
           <div className="scenario-card-grid">
             {featuredScenarios.map((scenario, index) => (
               <article className="scenario-card" key={scenario.budget}>

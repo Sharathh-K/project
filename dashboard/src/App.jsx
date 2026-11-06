@@ -19,10 +19,10 @@ const INITIAL_SETTINGS = {
 
 const PAGE_DETAILS = {
   overview: {
-    breadcrumb: "Overview",
-    eyebrow: "ECONOCAUSAL WORKSPACE",
-    title: "Plan campaigns with incremental impact in mind.",
-    description: "Use customer-level uplift estimates to explore how to allocate a limited e-mail campaign budget.",
+    breadcrumb: "Data overview",
+    eyebrow: "CUSTOMER DATA OVERVIEW",
+    title: "Review your customer data and latest plan.",
+    description: "Check upload quality, workflow status, drift, and a snapshot of your most recent campaign plan.",
   },
   planner: {
     breadcrumb: "Campaign planner",
@@ -31,7 +31,7 @@ const PAGE_DETAILS = {
     description: "Upload your customer data, set your budget, and build an e-mail plan from estimated incremental impact.",
   },
   workspace: {
-    breadcrumb: "Workspace",
+    breadcrumb: "Campaign tools",
     eyebrow: "CAMPAIGN DECISION WORKSPACE",
     title: "Explore customers, budgets, and segments.",
     description: "Compare model estimates for an individual customer, test budget limits, and review descriptive segment summaries.",
@@ -187,6 +187,8 @@ function Methodology() {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("planner");
+  const [theme, setTheme] = useState("dark");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [customers, setCustomers] = useState([]);
   const [settings, setSettings] = useState(INITIAL_SETTINGS);
   const [result, setResult] = useState(null);
@@ -198,6 +200,10 @@ export default function App() {
   const [apiError, setApiError] = useState("");
   const [health, setHealth] = useState(null);
   const [healthLoading, setHealthLoading] = useState(false);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
 
   async function refreshApi() {
     setHealthLoading(true);
@@ -223,18 +229,54 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function openDataQuality() {
+    changeTab("overview");
+    window.setTimeout(() => {
+      document.getElementById("data-quality-report")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  }
+
   const pageDetails = PAGE_DETAILS[activeTab];
+  const isDark = theme === "dark";
+  const shellClassName = `app-shell theme-${theme}${sidebarCollapsed ? " sidebar-collapsed" : ""}`;
 
   return (
-    <div className="app-shell">
-      <Sidebar activeTab={activeTab} onTabChange={changeTab} apiOnline={apiOnline} />
+    <div className={shellClassName}>
+      <Sidebar
+        activeTab={activeTab}
+        onTabChange={changeTab}
+        apiOnline={apiOnline}
+        collapsed={sidebarCollapsed}
+      />
 
       <main className="main-content">
         <header className="topbar">
-          <div className="breadcrumb">Workspace <span>/</span> {pageDetails.breadcrumb}</div>
+          <div className="breadcrumb">EconoCausal <span>/</span> {pageDetails.breadcrumb}</div>
           <div className="topbar-right">
+            <button
+              type="button"
+              className="menu-toggle"
+              onClick={() => setSidebarCollapsed((current) => !current)}
+              aria-controls="primary-sidebar"
+              aria-expanded={!sidebarCollapsed}
+              aria-label={sidebarCollapsed ? "Show navigation menu" : "Hide navigation menu"}
+              title={sidebarCollapsed ? "Show navigation menu" : "Hide navigation menu"}
+            >
+              <span aria-hidden="true">{sidebarCollapsed ? "☰" : "×"}</span>
+              <span className="menu-toggle-label">{sidebarCollapsed ? "Show menu" : "Hide menu"}</span>
+            </button>
             <span className="environment-label">Hillstrom experiment</span>
             <StatusBadge online={apiOnline} />
+            <button
+              type="button"
+              className="theme-toggle"
+              onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")}
+              aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
+              aria-pressed={isDark}
+            >
+              <span aria-hidden="true">{isDark ? "☼" : "☾"}</span>
+              {isDark ? "Light mode" : "Dark mode"}
+            </button>
           </div>
         </header>
 
@@ -271,6 +313,7 @@ export default function App() {
               health={health}
               healthLoading={healthLoading}
               onRetry={refreshApi}
+              onOpenDataOverview={openDataQuality}
             />
           </div>
 
@@ -280,6 +323,7 @@ export default function App() {
               settings={settings}
               result={result}
               apiOnline={apiOnline}
+              isDark={isDark}
               onOpenPlanner={() => changeTab("planner")}
             />
           </div>
@@ -290,7 +334,7 @@ export default function App() {
 
           <div hidden={activeTab !== "insights"}>
             <Suspense fallback={<div className="evaluation-message">Loading chart tools…</div>}>
-              <EvaluationCurves active={activeTab === "insights"} />
+              <EvaluationCurves active={activeTab === "insights"} isDark={isDark} />
             </Suspense>
           </div>
 

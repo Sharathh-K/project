@@ -13,6 +13,7 @@ function SegmentTable({ label, groups }) {
                 <th scope="col">Segment</th>
                 <th scope="col">Customers</th>
                 <th scope="col">Selected</th>
+                <th scope="col">Selected %</th>
                 <th scope="col">Avg. Mens uplift</th>
                 <th scope="col">Avg. Womens uplift</th>
               </tr>
@@ -20,9 +21,17 @@ function SegmentTable({ label, groups }) {
             <tbody>
               {groups.map((group) => (
                 <tr key={group.label}>
-                  <th scope="row">{group.label}</th>
+                  <th scope="row">
+                    {group.label}
+                    {group.isSmallGroup && (
+                      <span className="small-group-flag" title="Fewer than 30 customers; subgroup estimates may be noisy">
+                        ! Small group
+                      </span>
+                    )}
+                  </th>
                   <td>{formatNumber(group.customers)}</td>
                   <td>{formatNumber(group.selected)}</td>
+                  <td>{group.selectedPercent.toFixed(1)}%</td>
                   <td>{formatUplift(group.mens)}</td>
                   <td>{formatUplift(group.womens)}</td>
                 </tr>

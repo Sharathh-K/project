@@ -8,12 +8,16 @@ const Plot = createPlotlyComponent(Plotly);
 const PLOT_CONFIG = {
   responsive: true,
   displaylogo: false,
-  modeBarButtonsToRemove: ["lasso2d", "select2d"],
+  scrollZoom: true,
+  modeBarButtonsToRemove: ["lasso2d", "select2d", "autoScale2d"],
 };
 
-function CurvePlot({ curve, metric }) {
+function CurvePlot({ curve, metric, isDark }) {
   const isQini = metric === "qini";
   const data = curve[metric];
+  const colors = isDark
+    ? { panel: "#111827", text: "#cbd5e1", muted: "#94a3b8", grid: "#273449", line: "#4adeb3", band: "rgba(74, 222, 179, 0.16)" }
+    : { panel: "#ffffff", text: "#687977", muted: "#74817f", grid: "#edf1ef", line: "#187967", band: "rgba(35, 128, 104, 0.15)" };
   const firstPoint = isQini ? 0 : 4;
   const x = data.x.slice(firstPoint).map((value) => value * 100);
   const lower = isQini
@@ -39,7 +43,7 @@ function CurvePlot({ curve, metric }) {
       mode: "lines",
       line: { width: 0 },
       fill: "tonexty",
-      fillcolor: "rgba(35, 128, 104, 0.15)",
+      fillcolor: colors.band,
       hoverinfo: "skip",
       name: isQini ? "90% CI for advantage over random" : "90% uplift confidence band",
       type: "scatter",
@@ -48,7 +52,7 @@ function CurvePlot({ curve, metric }) {
       x,
       y: observed,
       mode: "lines",
-      line: { color: "#187967", width: 2.5 },
+      line: { color: colors.line, width: 2.5 },
       name: isQini ? "Model-ranked targeting" : "Observed uplift",
       hovertemplate: "%{x:.0f}% targeted<br>%{y:.2f}<extra></extra>",
       type: "scatter",
@@ -58,7 +62,7 @@ function CurvePlot({ curve, metric }) {
           x,
           y: data.random.slice(firstPoint),
           mode: "lines",
-          line: { color: "#74817f", width: 1.5, dash: "dash" },
+          line: { color: colors.muted, width: 1.5, dash: "dash" },
           name: "Random targeting",
           hovertemplate: "%{x:.0f}% targeted<br>%{y:.2f}<extra></extra>",
           type: "scatter",
@@ -67,7 +71,7 @@ function CurvePlot({ curve, metric }) {
           x: [x[0], x[x.length - 1]],
           y: [data.average, data.average],
           mode: "lines",
-          line: { color: "#74817f", width: 1.5, dash: "dash" },
+          line: { color: colors.muted, width: 1.5, dash: "dash" },
           name: "Average effect (everyone)",
           hovertemplate: "Average: %{y:.2f} pp<extra></extra>",
           type: "scatter",
@@ -77,21 +81,31 @@ function CurvePlot({ curve, metric }) {
   const layout = {
     autosize: true,
     margin: { l: 57, r: 18, t: 12, b: 55 },
-    paper_bgcolor: "#ffffff",
-    plot_bgcolor: "#ffffff",
-    font: { family: "Segoe UI, Arial, sans-serif", size: 10, color: "#687977" },
+    paper_bgcolor: colors.panel,
+    plot_bgcolor: colors.panel,
+    font: { family: "Segoe UI, Arial, sans-serif", size: 10, color: colors.text },
     xaxis: {
       title: { text: "% of customers e-mailed", standoff: 12 },
       range: [isQini ? 0 : 5, 100],
-      gridcolor: "#edf1ef",
+      gridcolor: colors.grid,
       zeroline: false,
       ticksuffix: "%",
+      showspikes: true,
+      spikemode: "across",
+      spikesnap: "cursor",
+      spikecolor: colors.muted,
+      spikethickness: 1,
     },
     yaxis: {
       title: { text: isQini ? "Extra conversions per 1,000" : "Observed uplift (pp)", standoff: 10 },
-      gridcolor: "#edf1ef",
+      gridcolor: colors.grid,
       zeroline: true,
-      zerolinecolor: "#dce5e1",
+      zerolinecolor: colors.grid,
+      showspikes: true,
+      spikemode: "across",
+      spikesnap: "cursor",
+      spikecolor: colors.muted,
+      spikethickness: 1,
     },
     legend: {
       orientation: "h",
@@ -100,6 +114,12 @@ function CurvePlot({ curve, metric }) {
       font: { size: 9 },
     },
     hovermode: "x unified",
+    hoverlabel: {
+      bgcolor: isDark ? "#1e293b" : "#ffffff",
+      bordercolor: isDark ? "#475569" : "#dce5e1",
+      font: { color: isDark ? "#f8fafc" : "#203331", size: 10 },
+    },
+    dragmode: "pan",
     showlegend: true,
   };
 
@@ -121,7 +141,7 @@ function qiniTakeaway(curve) {
   return "No clear evidence ranking beats random targeting.";
 }
 
-export default function EvaluationCurves({ active }) {
+export default function EvaluationCurves({ active, isDark }) {
   const [evaluation, setEvaluation] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -201,12 +221,12 @@ export default function EvaluationCurves({ active }) {
             <article className="curve-card">
               <h4>Qini curve</h4>
               <p>Cumulative incremental conversions vs. random targeting.</p>
-              <CurvePlot curve={curve} metric="qini" />
+              <CurvePlot curve={curve} metric="qini" isDark={isDark} />
             </article>
             <article className="curve-card">
               <h4>Uplift curve</h4>
               <p>Observed conversion uplift among the highest-ranked customers.</p>
-              <CurvePlot curve={curve} metric="uplift" />
+              <CurvePlot curve={curve} metric="uplift" isDark={isDark} />
             </article>
           </div>
         </section>

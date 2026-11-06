@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatCurrency, formatNumber, formatUplift } from "../format.js";
 import { buildPlanSummary } from "../planSummary.js";
+import { ALLOCATION_FILTERS, matchesAllocationFilter } from "../allocationFilters.js";
 import {
   downloadCsv,
   downloadExcel,
@@ -78,26 +79,25 @@ const TABLE_COLUMNS = [
 export default function Results({ result, page, setPage, drift, onExported }) {
   const { data, valuePerConversion } = result;
   const allocations = data.allocations;
-  const [selectedArm, setSelectedArm] = useState("All arms");
-  const [selectedZip, setSelectedZip] = useState("All ZIP codes");
-  const [selectedChannel, setSelectedChannel] = useState("All channels");
-  const [upliftFilter, setUpliftFilter] = useState("All uplift");
+  const [showCompletionToast, setShowCompletionToast] = useState(true);
+  const [filterColumn, setFilterColumn] = useState("");
+  const [filterValue, setFilterValue] = useState("");
   const [search, setSearch] = useState("");
   const [sortColumn, setSortColumn] = useState("expected_revenue");
   const [sortDirection, setSortDirection] = useState("descending");
   const [exporting, setExporting] = useState("");
   const [exportError, setExportError] = useState("");
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => setShowCompletionToast(false), 1600);
+    return () => window.clearTimeout(timeoutId);
+  }, []);
+
   const filteredAllocations = useMemo(() => allocations.filter((row) => {
-    const matchesArm = selectedArm === "All arms" || row.assigned_arm === selectedArm;
-    const matchesZip = selectedZip === "All ZIP codes" || row.zip_code === selectedZip;
-    const matchesChannel = selectedChannel === "All channels" || row.channel === selectedChannel;
-    const uplift = bestArmUplift(row);
-    const matchesUplift = upliftFilter === "All uplift"
-      || (upliftFilter === "Positive uplift" ? uplift > 0 : uplift <= 0);
     const matchesSearch = !search.trim()
       || String(row.customer_id).toLowerCase().includes(search.trim().toLowerCase());
-    return matchesArm && matchesZip && matchesChannel && matchesUplift && matchesSearch;
-  }), [allocations, selectedArm, selectedZip, selectedChannel, upliftFilter, search]);
+    return matchesAllocationFilter(row, filterColumn, filterValue) && matchesSearch;
+  }), [allocations, filterColumn, filterValue, search]);
   const sortedAllocations = useMemo(() => {
     const column = TABLE_COLUMNS.find((item) => item.key === sortColumn);
     const direction = sortDirection === "ascending" ? 1 : -1;
@@ -164,9 +164,14 @@ export default function Results({ result, page, setPage, drift, onExported }) {
 
   return (
     <section className="results-section" aria-live="polite">
+      {showCompletionToast && (
+        <div className="optimization-toast" role="status">
+          Optimization complete
+        </div>
+      )}
+      <div className="optimization-complete-slot">Optimization complete</div>
       <div className="section-heading results-heading">
         <div>
-          <p className="eyebrow">Optimization complete</p>
           <h2>Your campaign plan</h2>
         </div>
         <span className="result-count">{formatNumber(summary.n_customers)} customers analyzed</span>
@@ -215,45 +220,38 @@ export default function Results({ result, page, setPage, drift, onExported }) {
           </div>
           <div className="allocation-tools">
             <span className="table-count">{formatNumber(filteredAllocations.length)} customers</span>
-            <label className="arm-filter">
-              <span>Arm</span>
+            <label className="arm-filter filter-stage">
+              <span>Filter column</span>
               <select
-                value={selectedArm}
+                value={filterColumn}
                 onChange={(event) => {
-                  setSelectedArm(event.target.value);
+                  setFilterColumn(event.target.value);
+                  setFilterValue("");
                   setPage(1);
                 }}
+                aria-label="Choose a customer feature to filter"
               >
-                <option>All arms</option>
-                <option>Mens E-Mail</option>
-                <option>Womens E-Mail</option>
-                <option>No E-Mail</option>
+                <option value="">Choose a column</option>
+                {ALLOCATION_FILTERS.map((filter) => (
+                  <option key={filter.key} value={filter.key}>{filter.label}</option>
+                ))}
               </select>
             </label>
-            <label className="arm-filter">
-              <span>ZIP</span>
-              <select value={selectedZip} onChange={(event) => { setSelectedZip(event.target.value); setPage(1); }}>
-                <option>All ZIP codes</option>
-                <option>Urban</option>
-                <option>Suburban</option>
-                <option>Rural</option>
-              </select>
-            </label>
-            <label className="arm-filter">
-              <span>Channel</span>
-              <select value={selectedChannel} onChange={(event) => { setSelectedChannel(event.target.value); setPage(1); }}>
-                <option>All channels</option>
-                <option>Phone</option>
-                <option>Web</option>
-                <option>Multichannel</option>
-              </select>
-            </label>
-            <label className="arm-filter">
-              <span>Uplift</span>
-              <select value={upliftFilter} onChange={(event) => { setUpliftFilter(event.target.value); setPage(1); }}>
-                <option>All uplift</option>
-                <option>Positive uplift</option>
-                <option>Zero or negative</option>
+            <label className="arm-filter filter-stage">
+              <span>Feature value</span>
+              <select
+                value={filterValue}
+                disabled={!filterColumn}
+                onChange={(event) => {
+                  setFilterValue(event.target.value);
+                  setPage(1);
+                }}
+                aria-label="Choose a value for the selected customer feature"
+              >
+                <option value="">{filterColumn ? "All values" : "Choose a column first"}</option>
+                {ALLOCATION_FILTERS.find((filter) => filter.key === filterColumn)?.options.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
               </select>
             </label>
             <label className="customer-search">
