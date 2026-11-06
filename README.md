@@ -21,6 +21,7 @@ optimization, a REST API, and a React dashboard into one workflow.
 - [Repository structure](#-repository-structure)
 - [Getting started](#-getting-started)
 - [Run the dashboard](#-run-the-dashboard)
+- [Deploy to Render and Vercel](#-deploy-to-render-and-vercel)
 - [API reference](#-api-reference)
 - [Modeling workflow](#-modeling-workflow)
 - [Limitations and responsible use](#-limitations-and-responsible-use)
@@ -95,14 +96,12 @@ project/
 │   ├── src/
 │   │   ├── components/           # Results, charts, explorer, status and reports
 │   │   ├── pages/                # Campaign planner and campaign tools
-│   │   ├── api.js                # API client
-│   │   ├── csv.js                # Browser-side CSV parsing and validation
-│   │   ├── dataQuality.js        # Upload quality profiling
-│   │   ├── exportTable.js        # CSV, Excel and PDF exports
+│   │   ├── api.js                # Central API client and base URL
 │   │   ├── App.jsx
 │   │   └── styles.css
-│   ├── .env.example              # Dashboard API URL example
+│   ├── .env.example
 │   ├── package.json
+│   ├── vercel.json
 │   └── vite.config.js
 ├── Data/
 │   ├── Raw/                      # Source data
@@ -121,7 +120,11 @@ project/
 │   ├── evaluation.py
 │   └── optimizer.py
 ├── tests/                        # API, drift, evaluation and scenario tests
+├── .env.example                  # Local and deployment environment reference
+├── .gitignore
+├── render.yaml                   # Render web service definition
 ├── requirements.txt              # API and runtime dependencies
+├── requirements-dev.txt          # Backend test dependencies
 ├── requirements-notebooks.txt    # Additional analysis dependencies
 └── README.md
 ```
@@ -144,6 +147,12 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
+For backend tests, install the development dependencies as well:
+
+```powershell
+python -m pip install -r requirements-dev.txt
+```
+
 Install notebook dependencies only if you plan to run the notebooks:
 
 ```powershell
@@ -158,8 +167,10 @@ Run from the project root:
 uvicorn api.main:app --reload
 ```
 
-The API is available at `http://127.0.0.1:8000`. Interactive OpenAPI
-documentation is available at `http://127.0.0.1:8000/docs`.
+By default, the API is available at `http://localhost:8000`. Interactive
+OpenAPI documentation is available at `http://localhost:8000/docs`. Localhost
+frontend origins are allowed for development; production CORS is restricted to
+the exact origin(s) configured through `FRONTEND_ORIGIN`.
 
 ### Run the tests
 
@@ -167,6 +178,13 @@ Run the backend tests from the project root:
 
 ```powershell
 python -m pytest
+```
+
+The script-style API checks can also be run explicitly:
+
+```powershell
+python -m tests.smoke_test
+python -m tests.drift_test
 ```
 
 The drift reference profile can be regenerated with:
@@ -186,14 +204,95 @@ npm run dev
 ```
 
 Open the Vite URL printed in the terminal (usually
-`http://localhost:5173`). The dashboard expects the API at
-`http://127.0.0.1:8000` by default. To use a different API URL, copy
-`dashboard/.env.example` to `dashboard/.env.local`, set
-`VITE_API_BASE_URL`, and restart Vite.
+`http://localhost:5173`). The API client uses the
+`VITE_API_BASE_URL` environment variable and falls back to
+`http://localhost:8000` for local development. To set it explicitly, create
+`dashboard/.env.local` from `dashboard/.env.example` and restart Vite.
 
 The dashboard supports browser-side CSV validation and data-quality profiling,
 budget-constrained campaign planning, customer lookup, budget scenarios,
 segment summaries, evaluation curves, and CSV/Excel/PDF exports.
+
+## ☁️ Deploy to Render and Vercel
+
+The repository includes a Render Blueprint at `render.yaml` and Vercel
+configuration at `dashboard/vercel.json`. Deploy the backend first, then
+configure the frontend to use its public base URL.
+
+### 1. Deploy the API to Render
+
+1. Create a **Web Service** from this repository in Render, or use **New
+   Blueprint Instance** to apply `render.yaml`.
+2. Set the service root directory to the repository root.
+3. Use the configured build command:
+
+   ```sh
+   pip install -r requirements.txt
+   ```
+
+4. Use the configured start command:
+
+   ```sh
+   uvicorn api.main:app --host 0.0.0.0 --port $PORT
+   ```
+
+5. Set `FRONTEND_ORIGIN` in the Render environment to the exact deployed
+   frontend origin (scheme and host, with no path). Multiple exact origins can
+   be comma-separated. Do not use a wildcard. For Vercel previews, add their
+   stable origin(s) too; unlisted origins are intentionally rejected by CORS.
+6. Deploy and wait for the Render health check at `/health`.
+
+The service uses the Python version declared in `render.yaml`. The model,
+drift reference, and held-out evaluation data are already tracked in the
+repository. Their default paths are resolved relative to the project root.
+Override them in Render only if you intentionally store an artifact elsewhere:
+
+| Variable | Default | Required |
+|---|---|---|
+| `FRONTEND_ORIGIN` | — | Yes on Render; exact Vercel origin(s) |
+| `MODEL_PATH` | `Models/forestdr_pipe.joblib` | No; model file itself is required |
+| `DRIFT_REFERENCE_PATH` | `Models/drift_reference.json` | No; omission disables drift checks |
+| `EVALUATION_DATA_PATH` | `Data/Processed/test.csv` | No; omission disables held-out curves |
+
+Render provides the dynamic `PORT` value automatically. Do not set it
+manually. The model is loaded once per API process at startup; a missing or
+incompatible model fails startup instead of returning dummy predictions.
+
+### 2. Deploy the dashboard to Vercel
+
+1. Import this repository into Vercel.
+2. Set **Root Directory** to `dashboard`.
+3. Use the settings from `dashboard/vercel.json`:
+   - Framework preset: **Vite**
+   - Install command: `npm ci`
+   - Build command: `npm run build`
+   - Output directory: `dist`
+4. In Vercel **Project Settings → Environment Variables**, set
+   `VITE_API_BASE_URL` to the Render service's public base URL (origin only,
+   without `/docs`, `/health`, or an API route). Add it to each Vercel
+   environment you deploy, then redeploy.
+
+`VITE_API_BASE_URL` is public client configuration, not a secret. Do not put
+API keys, passwords, or credentials in any `VITE_` variable. The current API
+does not implement authentication; CORS controls browser access, not API
+authorization.
+
+### 3. Connect and test the deployment
+
+1. Visit `https://<your-render-service>.onrender.com/health`. Confirm the JSON
+   reports `"status": "ok"` and the expected model arms/features.
+2. Open the Vercel dashboard and check that its API status reports connected.
+3. Upload a valid customer CSV, run an optimization, and verify customer lookup,
+   budget scenarios, Insights, drift status, and exports.
+4. If browser requests fail, confirm that the Vercel origin exactly matches
+   one of the comma-separated `FRONTEND_ORIGIN` values on Render and that
+   `VITE_API_BASE_URL` points to the Render service. Check Render logs for
+   startup or model-loading errors.
+
+The root `.env.example` documents backend variables; Vite reads
+`VITE_API_BASE_URL` from `dashboard/.env.local`. Neither `.env` file is
+committed. Set `FRONTEND_ORIGIN` in the local backend process if you want to
+test a specific origin; localhost is allowed by the development CORS rule.
 
 ## 🔌 API reference
 

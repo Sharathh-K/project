@@ -1,9 +1,12 @@
+import logging
 import math
+import os
 import sys
 import threading
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal, Optional
+from urllib.parse import urlsplit
 
 import joblib
 import pandas as pd
@@ -19,17 +22,82 @@ from drift import check_drift, load_reference  # noqa: E402
 from evaluation import build_evaluation_curves  # noqa: E402
 from optimizer import optimize_campaign        # noqa: E402
 
-MODEL_PATH = ROOT / "Models" / "forestdr_pipe.joblib"
-DRIFT_PATH = ROOT / "Models" / "drift_reference.json"
-EVALUATION_PATH = ROOT / "Data" / "Processed" / "test.csv"
+logger = logging.getLogger(__name__)
+
+
+def _configured_path(environment_name, default_path):
+    value = os.getenv(environment_name)
+    path = Path(value) if value else default_path
+    return path if path.is_absolute() else ROOT / path
+
+
+def _parse_frontend_origins(value, *, required=False):
+    origins = []
+    for candidate in value.split(","):
+        origin = candidate.strip().rstrip("/")
+        if not origin:
+            continue
+        parsed = urlsplit(origin)
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.netloc
+            or parsed.path
+            or parsed.query
+            or parsed.fragment
+            or parsed.username
+            or parsed.password
+            or "*" in origin
+        ):
+            raise RuntimeError(
+                "FRONTEND_ORIGIN must contain one or more exact http(s) origins, "
+                "comma-separated, without paths or wildcards."
+            )
+        origins.append(origin)
+    if required and not origins:
+        raise RuntimeError(
+            "FRONTEND_ORIGIN must be set on Render to the deployed Vercel origin."
+        )
+    return origins
+
+
+MODEL_PATH = _configured_path("MODEL_PATH", Path("Models") / "forestdr_pipe.joblib")
+DRIFT_PATH = _configured_path("DRIFT_REFERENCE_PATH", Path("Models") / "drift_reference.json")
+EVALUATION_PATH = _configured_path(
+    "EVALUATION_DATA_PATH", Path("Data") / "Processed" / "test.csv"
+)
+IS_RENDER = os.getenv("RENDER", "").lower() == "true"
+FRONTEND_ORIGINS = _parse_frontend_origins(
+    os.getenv("FRONTEND_ORIGIN", ""), required=IS_RENDER
+)
+LOCAL_ORIGIN_REGEX = None if IS_RENDER else r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
 MAX_ROWS = 100_000
 HISTORY_FLOOR = 29.99                          # smallest history value in the data; history_floor flags it
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.model = joblib.load(MODEL_PATH)
-    app.state.drift_ref = load_reference(DRIFT_PATH) if DRIFT_PATH.exists() else None
+    if not MODEL_PATH.is_file():
+        raise RuntimeError(
+            f"Required model file was not found at {MODEL_PATH}. "
+            "Set MODEL_PATH to the deployed ForestDR model artifact."
+        )
+    try:
+        app.state.model = joblib.load(MODEL_PATH)
+    except Exception as error:
+        logger.exception("Could not load the configured model artifact at %s.", MODEL_PATH)
+        raise RuntimeError(
+            "Could not load the required model artifact. Check MODEL_PATH and "
+            "the Python dependency versions used to create the model."
+        ) from error
+
+    if DRIFT_PATH.is_file():
+        app.state.drift_ref = load_reference(DRIFT_PATH)
+    else:
+        logger.warning(
+            "Drift reference file was not found at %s; the /drift endpoint will return HTTP 503.",
+            DRIFT_PATH,
+        )
+        app.state.drift_ref = None
     app.state.evaluation_curves = None
     app.state.evaluation_lock = threading.Lock()
     yield
@@ -38,10 +106,10 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="EconoCausal API", version="0.2.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[],
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=FRONTEND_ORIGINS,
+    allow_origin_regex=LOCAL_ORIGIN_REGEX,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type"],
 )
 
 
@@ -150,7 +218,11 @@ def optimize(req: OptimizeRequest):
     try:
         plan, summary = optimize_campaign(df, cost, req.budget, req.value_per_conversion)
     except RuntimeError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Campaign optimization failed.")
+        raise HTTPException(
+            status_code=500,
+            detail="The optimizer could not produce a valid plan. Review the budget and e-mail costs, then try again.",
+        ) from e
 
     n = len(plan)
     summary.update({
@@ -180,7 +252,11 @@ def budget_scenarios(req: BudgetScenariosRequest):
             req.value_per_conversion,
         )
     except RuntimeError as error:
-        raise HTTPException(status_code=500, detail=str(error)) from error
+        logger.exception("Budget scenario optimization failed.")
+        raise HTTPException(
+            status_code=500,
+            detail="The optimizer could not complete the budget scenarios. Review the budgets and e-mail costs, then try again.",
+        ) from error
     return {"n_customers": len(scored), "scenarios": scenarios}
 
 

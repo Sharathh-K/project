@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { checkDrift, optimizeCampaign } from "../api.js";
+import { API_BASE_URL, checkDrift, optimizeCampaign } from "../api.js";
 import Results from "../components/Results.jsx";
 import DriftBanner from "../components/DriftBanner.jsx";
 import { defaultBudgetForCustomerCount, formatCurrency, formatNumber } from "../format.js";
@@ -206,7 +206,7 @@ export default function Planner({
         <div className="api-alert" role="status">
           <strong>API connection required.</strong>{" "}
           {apiError || "Start the FastAPI server to run a campaign plan."}
-          <span> The dashboard connects to http://127.0.0.1:8000 by default.</span>{" "}
+          <span> API base URL: {API_BASE_URL}.</span>{" "}
           <button type="button" className="retry-button" onClick={onRetry} disabled={healthLoading}>
             {healthLoading ? "Checking…" : "Retry connection"}
           </button>

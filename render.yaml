@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: econocausal-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.14.4
+      - key: FRONTEND_ORIGIN
+        sync: false

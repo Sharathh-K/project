@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { getHealth } from "./api.js";
+import { API_BASE_URL, getHealth } from "./api.js";
 import Planner from "./pages/Planner.jsx";
 import Sidebar, { StatusBadge } from "./components/Sidebar.jsx";
 import { formatCurrency, formatNumber } from "./format.js";
@@ -178,7 +178,7 @@ function Methodology() {
           </p>
         </article>
       </div>
-      <a className="methodology-api-link" href="http://127.0.0.1:8000/docs" target="_blank" rel="noreferrer">
+      <a className="methodology-api-link" href={`${API_BASE_URL}/docs`} target="_blank" rel="noreferrer">
         Open API documentation <span aria-hidden="true">↗</span>
       </a>
     </section>

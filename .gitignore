@@ -1,21 +1,41 @@
+# Environment and local credentials
+.env
+.env.*
+!.env.example
 
-# Virtual environment
+# Python environments, bytecode, and test/tool caches
 .venv/
-
-# Python cache
+venv/
 __pycache__/
 *.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
-# Jupyter checkpoints
-.ipynb_checkpoints/
-
-# React dashboard
+# Frontend dependencies and generated output
 dashboard/node_modules/
 dashboard/dist/
-dashboard/.env.local
-dashboard/.env.*.local
+dashboard/.vercel/
 
-# Unrequired Notebook
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Local/private datasets. The checked-in Hillstrom data and deployed model
+# artifacts remain tracked and are intentionally not ignored.
+Data/Local/
+Data/Private/
+
+# Jupyter-generated files
+.ipynb_checkpoints/
+
+# Notebook experiments not part of the maintained deliverable
 Notebooks/02_preprocess_and_split.ipynb
 Notebooks/Double_ML_pipeline.ipynb
 Notebooks/Double_ML_RandomForest.ipynb
