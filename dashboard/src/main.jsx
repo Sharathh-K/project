@@ -222,7 +222,6 @@ function App() {
             "Causal audit",
             "Budget allocation",
             "Live scoring & drift",
-            "How to use",
           ].map((t) => (
             <button
               className={tab === t ? "selected" : ""}
@@ -918,65 +917,7 @@ function App() {
             )}
             {tab === "Live scoring & drift" && <LiveCampaign bundled={bundled} budget={budget} setBudget={setBudget} cost={cost} setCost={setCost}/>}
             {tab === "Budget allocation" && <Allocation scores={scores} source={source} budget={budget} setBudget={setBudget} cost={cost} setCost={setCost} Chart={Chart} Metric={Metric}/> }
-            {tab === "How to use" && (
-              <section className="card">
-                <h2>A five-minute explanation for friends</h2><p><b>Budget allocation:</b> Set a budget and cost per email, choose a population, and inspect the recommended action for every customer. For $1 and $0.10 per email, at most ten customers are selected. These are predicted revenue gains, not realized sales.</p><p><a href="/INTERVIEW_GUIDE.md" target="_blank" rel="noreferrer">Open the full project and interview guide</a></p>
-                <ol>
-                  <li>
-                    <b>Start & data:</b> “These are 64,000 customers. Uploading
-                    a raw CSV checks the file and shows group visit rates. It
-                    does not retrain the model.”
-                  </li>
-                  <li>
-                    <b>Budget:</b> “If one email costs $0.10 and I have $100, I
-                    can afford at most 1,000 emails. Choosing the optimal
-                    recipients is Week 3.”
-                  </li>
-                  <li>
-                    <b>Causal graph:</b> “Past spending can cause both getting
-                    an offer and buying more in our mock shop. We must account
-                    for it. Hillstrom assigned emails randomly.”
-                  </li>
-                  <li>
-                    <b>Customer scores:</b> “Choose visits, women’s email, test
-                    customers, Web channel, recency at most 6 and effect at
-                    least 5 pp. Watch the count, histogram and table change.”
-                  </li>
-                  <li>
-                    <b>Interpret a score:</b> “An estimated +5 pp could mean a
-                    chance rising from 10% to 15% for similar customers. We
-                    cannot observe both possible futures for one person.”
-                  </li>
-                  <li>
-                    <b>Uplift evidence:</b> “Compare the model’s order with a
-                    random order. Read the interval as well as the curve. We
-                    only claim improvement where the evidence supports it.”
-                  </li>
-                  <li>
-                    <b>Causal audit:</b> “Shuffle emails: the estimate should
-                    move near zero. Add irrelevant information or remove some
-                    rows: check stability. These checks do not prove all hidden
-                    influences are gone.”
-                  </li>
-                  <li>
-                    <b>Upload scored CSV:</b> “Load the Python-generated
-                    customer scores, including all six effect columns. The
-                    browser filters and charts them locally. Uploaded scores do
-                    not replace our independent saved evaluation.”
-                  </li>
-                  <li>
-                    <b>Reset / download:</b> “Reset restores the original test
-                    customers. Download saves every matching score, not just the
-                    25 visible rows.”
-                  </li>
-                </ol>
-                <p>
-                  Read the numbered notebooks in order: EDA → preprocessing →
-                  causal graph → matching → Double ML → audit → dashboard
-                  export.
-                </p>
-              </section>
-            )}
+
           </>
         )}
         <footer>
