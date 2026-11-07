@@ -151,4 +151,175 @@ Week 4 connected the analysis and optimizer into a usable application. A user ca
 
 > “In Week 4, I packaged the trained causal models in a FastAPI service and connected them to the React dashboard. Every scoring request checks whether the new customers look different from the training customers. The application then predicts email effects, applies the budget optimizer and explains the plan in simple language. I verified prediction consistency and budget limits while keeping statistical uncertainty visible.”
 
-**Documentation review:** 5 November 2026. The verification table records the earlier executed checks, including the 31 October review. This documentation-only update cross-checked the implementation and saved evidence; it did not rerun training or claim new test results.
+## 8. Detailed request journey: from a CSV to a campaign plan
+
+The Week 4 workflow connects existing analysis to an application. It does not train a new causal model for each upload.
+
+1. **Receive customers.** The user loads the held-out demonstration sample or uploads a CSV containing information known before the campaign. The browser converts the selected fields into a JSON request.
+2. **Validate the request.** FastAPI and Pydantic check the field structure, allowed values, batch size and unique customer IDs. The recommendation endpoint also checks that the budget and email cost can be represented in whole cents.
+3. **Load the model on first use.** The API checks the local artifacts and loads the saved model bundle. A cached engine is reused for later requests in that process, avoiding repeated loading. The first model-dependent request can therefore take longer than later requests.
+4. **Recreate the feature engineering.** The service corrects `Surburban`, calculates `log(1 + history)`, creates the same recency groups, and adds the previous-interest count. It then uses the saved training encoder, rather than learning new categories from the upload.
+5. **Predict six effects.** Each of the three outcome models compares Men's Email and Women's Email against No Email. Non-finite predictions are rejected.
+6. **Screen baseline drift.** The incoming characteristics are compared with the training reference. The response includes an overall status and one diagnostic row per baseline characteristic. The implementation calculates predictions and drift within the same scoring request; a drift warning does not automatically block predictions or allocation.
+7. **Allocate the budget.** For `/api/recommend`, the server passes its own spending-effect predictions to the shared Week 3 optimizer. It does not accept caller-supplied treatment-effect scores as a substitute.
+8. **Return and explain.** The response contains the scores, drift report, allocation, model fingerprint, caution about uncertainty and a plain-English campaign summary. The browser shows a preview and exports the complete recommendation table.
+
+**Analogy:** the saved model is a trained shop assistant. The API is the counter where a customer list is submitted. The drift check asks whether this list looks unfamiliar. The optimizer chooses a plan within the available money, and the dashboard displays the proposed plan.
+
+## 9. Input fields and what they mean
+
+| Field | Meaning and role | Example |
+|---|---|---|
+| `customer_id` | A unique label for joining predictions back to the submitted row; not a model predictor | `customer-001` |
+| `recency` | Months since the earlier purchase; integer from 1 to 12 | `3` |
+| `history` | Earlier spending, finite and nonnegative | `100.0` |
+| `mens` | Previous men's-merchandise purchase flag, 0 or 1 | `1` |
+| `womens` | Previous women's-merchandise purchase flag, 0 or 1 | `0` |
+| `newbie` | Dataset's pre-campaign new-customer flag, 0 or 1 | `0` |
+| `zip_code` | Dataset's area category, not a numerical postal code | `Urban` |
+| `channel` | Earlier shopping-channel category | `Web` |
+| `budget` | Maximum contact expenditure for a recommendation request | `1.00` |
+| `email_cost` | Same positive assumed cost for either email type | `0.10` |
+
+Men's and women's purchase flags are not customer gender. Email treatments are recommendations produced by the application, not these baseline flags.
+
+The browser allows an optional ID column and creates row labels if absent. Direct JSON API requests require IDs. The CSV upload limit is **5 MB in the browser**; the API separately enforces **1–5,000 customer rows**. The browser's file limit is not a claim of a general server-side request-byte quota.
+
+A CSV may contain extra columns, but the live uploader selects the baseline inputs and ID. Direct API JSON validation rejects unexpected fields. Campaign assignment, visits, purchases and later spending must not be used to decide a new customer's effect estimate.
+
+### Example API request
+
+This illustrative request can be entered into **POST /api/recommend → Try it out** on the local `/docs` page:
+
+```json
+{
+  "customers": [
+    {
+      "customer_id": "customer-001",
+      "recency": 3,
+      "history": 100.0,
+      "mens": 1,
+      "womens": 0,
+      "newbie": 0,
+      "zip_code": "Urban",
+      "channel": "Web"
+    }
+  ],
+  "budget": 1.0,
+  "email_cost": 0.1
+}
+```
+
+This is a format demonstration, not a saved prediction for a real customer. With one customer, the drift status is `insufficient_data`. The optimizer can recommend at most one email; it can recommend none if both spending effects are nonpositive. A $1 budget does not require spending the entire dollar.
+
+For `/api/score` and `/api/drift`, send only `customers`, without the budget fields.
+
+## 10. Reading the returned effects correctly
+
+| Returned field | Meaning | Illustrative interpretation |
+|---|---|---|
+| `visit_mens`, `visit_womens` | Email-minus-no-email difference in visit probability | `0.05` means +5 percentage points |
+| `conversion_mens`, `conversion_womens` | Email-minus-no-email difference in purchase probability | `0.002` means +0.2 percentage points |
+| `spend_mens`, `spend_womens` | Email-minus-no-email difference in expected spending | `0.80` means an estimated extra $0.80 |
+
+These example values are explanatory, not additional measured results. A +5 percentage-point effect could describe a change from 10% to 15%, but the effect alone does not tell us those two absolute probabilities. A negative effect indicates a predicted decrease compared with no email.
+
+The estimates describe average differences for similar customer profiles. We cannot observe the same person both receiving and not receiving the email in the same campaign. The service returns effect estimates and warnings; it does not supply new per-customer confidence intervals in the live response.
+
+The recommendation response adds `recommended_action`, selected-action predicted revenue and allocation totals. No Email has zero incremental effect relative to itself; it does not mean the customer will spend nothing. The `split = new` label marks rows entering the inference workflow. Even held-out sample rows receive that label when submitted through the API; this does not make them a newly collected experiment.
+
+## 11. Drift calculations explained with small examples
+
+Drift asks whether the incoming customers look different from the customers used for training. It does not require new campaign outcomes.
+
+### Numeric characteristics: KS distance
+
+For `recency` and `history`, the code compares cumulative distributions and takes their largest gap:
+
+`KS distance = maximum absolute difference between the two cumulative proportions`.
+
+For example, suppose 80% of training customers spent at most $200 previously, but only 50% of incoming customers did. The gap at $200 is 0.30, so the KS distance is at least 0.30 and exceeds the 0.10 screening threshold. The implementation uses the KS **distance**, not its p-value.
+
+### Categorical characteristics: total variation distance
+
+For category and binary fields:
+
+`TV distance = 0.5 × sum of absolute differences in category proportions`.
+
+Suppose training customers are 60% Web and 40% Phone, while an incoming batch is 30% Web and 70% Phone. The distance is:
+
+`0.5 × (|0.60 − 0.30| + |0.40 − 0.70|) = 0.30`.
+
+This flags a change in channel proportions. It does not mean the model is 30% inaccurate.
+
+### Unknown categories and overall status
+
+`unknown_fraction` is the share of incoming values absent from the training reference for that categorical feature. An unfamiliar channel can trigger its own warning even if the total distance is below 0.10. Unknown categories are accepted by the saved encoder's unknown-category handling, but acceptance does not establish reliable predictions for them.
+
+| Overall status | Exact interpretation | Appropriate response |
+|---|---|---|
+| `no_warning` | At least 100 rows and no feature crosses the screening rule | Continue reviewing the plan and existing model limitations |
+| `review` | At least 100 rows and a distance or unknown-category warning exists | Check column meanings, collection methods and population differences |
+| `insufficient_data` | Fewer than 100 rows, regardless of individual feature warnings | Inspect the feature warnings and obtain a larger representative batch for a stronger check |
+
+The threshold is a declared heuristic. These are separate, one-feature-at-a-time checks, so they may miss changes in relationships between features. They do not monitor changes in actual visits, purchases, spending outcomes or treatment effects. This is request-triggered screening, not a scheduled background monitoring service with stored alert history.
+
+## 12. Dashboard demonstration and every live-page control
+
+| Element | What the user does or learns |
+|---|---|
+| Use 1,000 held-out sample customers | Loads historical profiles for a reproducible demonstration; no new experiment is created |
+| CSV upload | Supplies new baseline profiles; invalid input clears previous results and displays an error |
+| Customers ready | Confirms the number of rows prepared for the next request |
+| Budget ($) | Sets maximum expenditure; changing it clears the previous plan |
+| Cost per email ($) | Sets the equal assumed contact cost for both email types; changing it also clears the plan |
+| Check drift, score and allocate | Sends one recommendation request; controls are disabled while it runs |
+| API documentation | Opens the endpoint descriptions and interactive request interface |
+| Campaign summary | Explains selected count, contact cost, contact-cost difference and predicted additional revenue |
+| Drift table | Shows each characteristic, its distance, unfamiliar-category share and review flag |
+| First 20 recommendations | Gives a short preview, not the entire result set |
+| Download all recommendations | Exports all returned customers and recommendations to `live_campaign.csv` |
+| Model fingerprint | Identifies the loaded model bundle for tracing the result |
+
+**Suggested demonstration:** load the 1,000-row sample, set budget to $1 and cost to $0.10, then run the request. Explain that ten is the maximum affordable contact count; fewer are possible if there are insufficient positive predictions. Inspect drift before discussing the plan. Download the full result and distinguish predicted extra revenue from measured sales.
+
+The separate **Budget allocation** page works from already-scored records. **Live scoring & drift** starts from baseline profiles and asks the API to generate predictions. The removed “How to use” navigation page is not needed for this workflow; the repository documentation remains available.
+
+## 13. Notebook 08: what each stage verifies
+
+1. **Prediction parity:** submit 200 held-out profiles through the API and compare all six effects with notebook 05's saved predictions. This tests consistency of serving and preprocessing, not whether the causal estimates are true.
+2. **Drift behaviour:** compare identical reference data, deliberately shifted data and a tiny batch. Expected statuses are `no_warning`, `review` and `insufficient_data`, respectively.
+3. **Integrated recommendation:** send the $1 / $0.10 campaign request and check the returned action counts and budget limits using the shared optimizer.
+4. **Invalid input rejection:** exercise duplicate IDs, invalid histories, outcome fields accidentally included in JSON, and fractional-cent budgets. Invalid requests must fail instead of returning misleading plans.
+5. **Evidence export:** save the verification report for inspection and reproducibility. The earlier results in section 3 are from executed runs; this expanded write-up does not imply a new run.
+
+The model-load check on 32 rows, notebook test on 200 rows and recorded full comparison on 19,200 rows are different checks. They should not be described as the same sample size or as new model accuracy scores.
+
+## 14. Operating the application and investigating problems
+
+| Symptom | Meaning and next step |
+|---|---|
+| Site cannot be reached | Check that the local server is running on port 8002 and use the address printed by it |
+| `/api/health` works but scoring fails | Process availability does not confirm model readiness; inspect `/api/model` and its error |
+| HTTP 422 | Correct the submitted fields, ranges, IDs or monetary precision according to the response |
+| HTTP 503 for model files or compatibility | Restore a consistent environment and artifacts, or regenerate preprocessing and models together |
+| Models retrained but old predictions appear | Restart the API; its engine is cached in memory |
+| Dashboard source changed but old interface appears | Rebuild the dashboard, then refresh the browser |
+| Drift review warning | Investigate the incoming population; do not interpret the warning as proof of model failure or automatically retrain |
+
+After regenerating analysis, follow the [README refresh sequence](../README.md): export the analysis snapshot, rerun notebook 07 for its allocation snapshot, run notebook 08 for verification, and rebuild the dashboard after snapshot changes. Keep training dependencies consistent with the saved model. Model files are trusted local artifacts, not uploads accepted by the API.
+
+The local server does not persist incoming customer requests. Nevertheless, uploaded information is processed in memory and the downloaded CSV remains on the user's computer. A real deployment would require explicit access control, privacy practices, monitoring and operational support; these were not delivered as part of the local demonstration.
+
+## 15. What Week 4 achieved and what remains a future task
+
+Week 4 delivered a working connection between causal models, customer uploads, drift screening and a budget-respecting recommendation. The practical benefit is repeatable inference without rerunning training notebooks for every list, with visible checks and a downloadable plan.
+
+Future work would include a fresh randomized pilot to measure actual gains, stronger full-size robustness analysis, validated drift thresholds, outcome monitoring, and secure deployment if required. These are future tasks, not completed features. The existing women's-email audit warning and uncertainty in spending rankings remain relevant even when all software checks succeed.
+
+**Short viva explanation:**
+
+> “In Week 4, I made our trained model usable through a FastAPI service. A user uploads earlier customer information, and the service applies the saved preprocessing and predicts the extra benefit of each email. It checks whether the customers look different from the training data and uses the budget optimizer to recommend actions. The dashboard explains the plan and exports it. I checked prediction consistency and budget limits, while clearly showing that revenue is predicted and drift warnings need investigation.”
+
+
+**Documentation review:** 7 November 2026. Expanded against notebook 08, the API implementation, live dashboard and saved verification evidence. Historical numerical and test results retain their original scope and dates; no models were retrained for this documentation update.
