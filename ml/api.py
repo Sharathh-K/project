@@ -9,7 +9,7 @@ sys.path.append(str(Path(__file__).parent))
 from drift import check
 
 app = FastAPI(title="EconoCausal API")
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"],
+app.add_middleware(CORSMiddleware, allow_origins=["*"],
                    allow_methods=["*"], allow_headers=["*"])
 RES = Path("EconoCausal/results")
 
