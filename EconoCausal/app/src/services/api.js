@@ -1,6 +1,6 @@
 // EconoCausal API client. Start the backend first:
 //   uvicorn ml.api:app --reload   (run from the repo root)
-const BASE = 'http://127.0.0.1:8000'
+const BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
 async function call(path, options) {
   let res
