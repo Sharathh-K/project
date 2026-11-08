@@ -111,19 +111,7 @@ Both spending-ranking intervals include zero, so spending-targeting superiority 
 
 Generated IDs identify dataset rows, not contact addresses. The project recommends actions; it does not send emails. A new randomized pilot would be needed to measure actual business gains.
 
-## 6. Deliverables and how to use them
-
-- [Notebook 07](../07_budget_optimization.ipynb): optimization, comparisons, scenarios and explanations.
-- [Shared SciPy optimizer](../api/optimization.py): Python calculation used by the notebook.
-- [Allocation dashboard](../dashboard/src/Allocation.jsx): interactive planning page.
-- [Saved optimization report](../dashboard/public/results/optimization_report.json): results, assumptions and input fingerprints.
-- [Default customer recommendations](../dashboard/public/results/allocation_default.csv): saved allocation matrix.
-
-Open notebook 07 in the project Python environment and run all cells. Its default uses the committed analysis snapshot; retraining is not required. For a new training run, execute notebooks 01–06, run `python dashboard/export_data.py`, and then rerun notebook 07.
-
-In the dashboard, open **Budget allocation**, choose a population, enter the budget and email cost, review the recommendations, and download the table. Startup instructions are in the [README](../README.md).
-
-## 7. Weekly outcome and viva explanation
+## 6. Weekly outcome and viva explanation
 
 Week 3 turned causal-effect estimates into an actionable, budget-respecting customer plan. The dashboard makes the choices, costs and assumptions visible so a manager can inspect the proposed campaign.
 
