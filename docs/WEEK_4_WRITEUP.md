@@ -128,30 +128,19 @@ Keep the terminal running. The localhost address is not an expiring hosted link:
 
 For a viva demonstration, open **Live scoring & drift**, load the sample customers, set $1 and $0.10, run the workflow, and explain why at most ten customers can be selected. Point out the drift table and prediction warning before downloading the plan.
 
-## 5. Deliverables
-
-- [Notebook 08](../08_api_drift_packaging.ipynb): executable API, drift and allocation checks with explanations.
-- [FastAPI application](../api/main.py): endpoint definitions and request validation.
-- [Inference and drift service](../api/service.py): shared preprocessing, model checks and predictions.
-- [Shared optimizer](../api/optimization.py): budget allocation reused from Week 3.
-- [Live dashboard page](../dashboard/src/LiveCampaign.jsx): upload, scoring, drift results and recommendations.
-- [API reference](API_REFERENCE.md): request formats, responses and error meanings.
-- [Final review evidence](FINAL_REVIEW_CHECKS.json): recorded numerical checks and test counts.
-- [Local startup script](../scripts/run_local.sh): starts the packaged application after setup.
-
-## 6. Limitations retained
+## 5. Limitations retained
 
 Passing software tests does not prove that every estimated effect is correct. Spending rankings remain uncertain, and the women's-email subset audit warning is retained. Refutations do not prove the absence of hidden confounding. Baseline drift checks cannot directly establish a change in causal effects; new campaign outcomes would be needed to investigate that.
 
 The application recommends emails but never sends them. It does not persist uploaded customer requests, automatically retrain models, or provide public production authentication and hosting. This is a reproducible local project demonstration. Real business gains require a new randomized pilot.
 
-## 7. Weekly outcome and viva explanation
+## 6. Weekly outcome and viva explanation
 
 Week 4 connected the analysis and optimizer into a usable application. A user can now submit customer information, obtain predictions and warnings, and download a budget-respecting campaign plan.
 
 > “In Week 4, I packaged the trained causal models in a FastAPI service and connected them to the React dashboard. Every scoring request checks whether the new customers look different from the training customers. The application then predicts email effects, applies the budget optimizer and explains the plan in simple language. I verified prediction consistency and budget limits while keeping statistical uncertainty visible.”
 
-## 8. Detailed request journey: from a CSV to a campaign plan
+## 7. Detailed request journey: from a CSV to a campaign plan
 
 The Week 4 workflow connects existing analysis to an application. It does not train a new causal model for each upload.
 
@@ -166,7 +155,7 @@ The Week 4 workflow connects existing analysis to an application. It does not tr
 
 **Analogy:** the saved model is a trained shop assistant. The API is the counter where a customer list is submitted. The drift check asks whether this list looks unfamiliar. The optimizer chooses a plan within the available money, and the dashboard displays the proposed plan.
 
-## 9. Input fields and what they mean
+## 8. Input fields and what they mean
 
 | Field | Meaning and role | Example |
 |---|---|---|
@@ -214,7 +203,7 @@ This is a format demonstration, not a saved prediction for a real customer. With
 
 For `/api/score` and `/api/drift`, send only `customers`, without the budget fields.
 
-## 10. Reading the returned effects correctly
+## 9. Reading the returned effects correctly
 
 | Returned field | Meaning | Illustrative interpretation |
 |---|---|---|
@@ -228,7 +217,7 @@ The estimates describe average differences for similar customer profiles. We can
 
 The recommendation response adds `recommended_action`, selected-action predicted revenue and allocation totals. No Email has zero incremental effect relative to itself; it does not mean the customer will spend nothing. The `split = new` label marks rows entering the inference workflow. Even held-out sample rows receive that label when submitted through the API; this does not make them a newly collected experiment.
 
-## 11. Drift calculations explained with small examples
+## 10. Drift calculations explained with small examples
 
 Drift asks whether the incoming customers look different from the customers used for training. It does not require new campaign outcomes.
 
@@ -264,7 +253,7 @@ This flags a change in channel proportions. It does not mean the model is 30% in
 
 The threshold is a declared heuristic. These are separate, one-feature-at-a-time checks, so they may miss changes in relationships between features. They do not monitor changes in actual visits, purchases, spending outcomes or treatment effects. This is request-triggered screening, not a scheduled background monitoring service with stored alert history.
 
-## 12. Dashboard demonstration and every live-page control
+## 11. Dashboard demonstration and every live-page control
 
 | Element | What the user does or learns |
 |---|---|
@@ -285,7 +274,7 @@ The threshold is a declared heuristic. These are separate, one-feature-at-a-time
 
 The separate **Budget allocation** page works from already-scored records. **Live scoring & drift** starts from baseline profiles and asks the API to generate predictions. The removed “How to use” navigation page is not needed for this workflow; the repository documentation remains available.
 
-## 13. Notebook 08: what each stage verifies
+## 12. Notebook 08: what each stage verifies
 
 1. **Prediction parity:** submit 200 held-out profiles through the API and compare all six effects with notebook 05's saved predictions. This tests consistency of serving and preprocessing, not whether the causal estimates are true.
 2. **Drift behaviour:** compare identical reference data, deliberately shifted data and a tiny batch. Expected statuses are `no_warning`, `review` and `insufficient_data`, respectively.
@@ -295,7 +284,7 @@ The separate **Budget allocation** page works from already-scored records. **Liv
 
 The model-load check on 32 rows, notebook test on 200 rows and recorded full comparison on 19,200 rows are different checks. They should not be described as the same sample size or as new model accuracy scores.
 
-## 14. Operating the application and investigating problems
+## 13. Operating the application and investigating problems
 
 | Symptom | Meaning and next step |
 |---|---|
@@ -311,7 +300,7 @@ After regenerating analysis, follow the [README refresh sequence](../README.md):
 
 The local server does not persist incoming customer requests. Nevertheless, uploaded information is processed in memory and the downloaded CSV remains on the user's computer. A real deployment would require explicit access control, privacy practices, monitoring and operational support; these were not delivered as part of the local demonstration.
 
-## 15. What Week 4 achieved and what remains a future task
+## 14. What Week 4 achieved and what remains a future task
 
 Week 4 delivered a working connection between causal models, customer uploads, drift screening and a budget-respecting recommendation. The practical benefit is repeatable inference without rerunning training notebooks for every list, with visible checks and a downloadable plan.
 
