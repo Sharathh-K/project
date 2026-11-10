@@ -14,7 +14,7 @@ I performed propensity-score matching and compared customer characteristics befo
 
 Matching used the nearest propensity log-odds within a caliper of 0.2 times the pooled pre-match log-odds standard deviation, with replacement: the same no-email customer could be reused. Balance used a fixed pre-match standard-deviation denominator, and the report tracked unmatched customers, control reuse and effective sample size.
 
-The original groups were already well balanced because email assignment was randomized. Matching slightly worsened some differences, so the matched data was used for diagnostics. The original training data was retained for Double Machine Learning.
+The original groups were already well balanced because email assignment was randomized. Matching was designed as a diagnostic exercise for this randomized study and slightly worsened some measured differences; it was not used to construct the DML training sample. The original training data was retained for Double Machine Learning.
 
 ## 2. Double Machine Learning training
 
@@ -25,7 +25,9 @@ I trained three EconML `CausalForestDML` models, one each for visits, purchases 
 
 Random Forest models were used to learn expected outcomes and treatment probabilities from customer characteristics. Cross-fitting kept the helper-model training separate from the observations on which their residual predictions were calculated.
 
-The causal forest then estimated how treatment effects vary across customer profiles. For example, a visit-effect estimate of +5 percentage points means an estimated increase from 10% to 15% for similar customers.
+The outcome and treatment helper predictions are used to form residuals: what remains after accounting for patterns in the baseline features. The final causal forest learns how the remaining treatment variation relates to remaining outcome variation across customer profiles. Cross-fitting helps reduce overfitting bias; it does not establish the causal assumptions by itself.
+
+The causal forest then estimated how treatment effects vary across customer profiles. For example, a visit-effect estimate of +5 percentage points could represent a change from 10% to 15% for similar customers. The effect score alone does not provide those absolute probabilities.
 
 These are estimated effects for customer profiles, often called individual treatment-effect scores. They are not directly observed individual effects, because each customer experiences only one campaign assignment.
 
@@ -37,18 +39,26 @@ I also calculated Qini scores, which summarize the ranking advantage over random
 
 These bootstrap intervals keep the trained model fixed; they do not include uncertainty from retraining. They are not adjusted for the six outcome/email comparisons. EDA had already examined the full dataset, so the evaluation is exploratory even though test rows were excluded from model fitting.
 
-For visits:
+The saved normalized Qini results from notebook 05 were:
 
-- **Men’s Email:** Qini approximately 0.00336; its uncertainty interval included zero, so the ranking advantage remained uncertain.
-- **Women’s Email:** Qini approximately 0.01028; its interval remained above zero, providing positive exploratory ranking evidence.
+| Outcome | Email | Qini area | Approximate 95% interval | Interpretation |
+|---|---|---:|---|---|
+| Visit | Men's | 0.00336 | −0.00077 to 0.00703 | Ranking advantage uncertain |
+| Visit | Women's | 0.01028 | 0.00679 to 0.01429 | Positive exploratory evidence |
+| Purchase | Men's | 0.00034 | −0.00070 to 0.00136 | Ranking advantage uncertain |
+| Purchase | Women's | 0.00097 | 0.00003 to 0.00186 | Weak exploratory evidence |
+| Spend | Men's | 0.08562 | −0.07967 to 0.24244 | Ranking advantage uncertain |
+| Spend | Women's | 0.11463 | −0.04769 to 0.27267 | Ranking advantage uncertain |
 
-Women’s Email also showed a small exploratory purchase-ranking advantage. Spending-ranking advantages remained uncertain for both emails. Therefore, the results did not support claiming that every model outperformed random targeting.
+Qini measures a ranking advantage, not model accuracy or a probability. Its units depend on the outcome, so spending areas should not be compared directly with visit areas. The women's purchase interval barely excludes zero and is especially fragile given the multiple comparisons.
+
+An email helping on average and a model identifying the best recipients are different questions. Men's Email can increase average visits while its model's ranking advantage remains uncertain. We therefore did not claim that every model outperformed random targeting or that the charts proved increased profit.
 
 ## 4. React and Plotly visualization
 
 I integrated Plotly charts into the React dashboard to display uplift curves, Qini-style excess-gain curves and uncertainty summaries.
 
-The Customer scores page supports filtering by outcome, email comparison, training/test population, shopping channel, recency and minimum estimated effect. It also provides effect distributions, a paginated customer table and downloads of filtered scores.
+The Customer scores page supports filtering by outcome, email comparison, training/test population, shopping channel, recency and minimum estimated effect. It also provides effect distributions, a paginated customer table and downloads of filtered scores. For the matching graph, blue means before matching and orange means after matching; each mark represents an email-versus-no-email difference in a baseline feature. These colours do not identify the two treatment groups on that graph. Evaluation uses held-out rows; displaying training scores does not make them independent evidence.
 
 ## 5. Mid-project review: causal audit
 
@@ -59,6 +69,8 @@ The Customer scores page supports filtering by outcome, email comparison, traini
 | Add a random column | Meaningless information should not substantially change estimates | Men's 7.164 → 7.137 pp; women's 7.108 → 6.995 pp |
 | Shuffle email labels | Breaking the assignment relationship should remove the large estimated effect | Men's 0.252 pp; women's 0.221 pp, both near zero relative to the original audit effects |
 | Use random 80% subsets | Check sensitivity to which customers are included | Men's 7.513 pp; women's 5.640 pp |
+
+Here, **pp** means percentage points and the perturbed effects summarize repeated audit fits. A large diagnostic p-value means a discrepancy was not detected, not that causality was proved.
 
 The women's subset diagnostic p-value was approximately **0.040**, triggering a stability warning. This is reported, not hidden or treated as proof that the final model is wrong. Audit effects use a different sample and smaller model from the final model and must not be substituted for its estimates.
 
@@ -80,4 +92,4 @@ The project produced reproducible Double Machine Learning models, customer-effec
 
 > “In Week 2, I checked group similarity, trained models to estimate the extra benefit of each email, and evaluated whether the scores help rank customers. I then challenged the analysis using DoWhy and checked that the dashboard can filter thousands of scores. Some results were encouraging, but I retained the uncertain spending rankings and the audit stability warning.”
 
-**Documentation review:** 5 November 2026. Statistical findings refer to the saved verified run; this documentation review did not retrain the models.
+**Documentation review:** 10 November 2026. Cross-checked against notebooks 04–06 and the recorded dashboard verification. Statistical findings refer to the saved verified run; this documentation review did not retrain the models.

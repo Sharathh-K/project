@@ -16,6 +16,12 @@ The analysis checked missing values, repeated records, spending distributions, r
 
 Purchases were rare—578 customers purchased. Website visits were used as the primary outcome, while the rarity of purchases was recorded as a limitation on purchase and spending analysis. Purchasing and spending were retained as secondary outcomes.
 
+### Main findings and why they matter
+
+The largest measured pairwise baseline imbalance in the full-data EDA was about **0.017 SMD**, indicating small differences in recorded pre-campaign characteristics. This supports the balance check; it does not independently prove randomization or the absence of unrecorded differences.
+
+The full-data average visit-rate differences versus No Email were approximately **+7.66 percentage points for Men's Email** and **+4.52 points for Women's Email**. These are descriptive randomized-group comparisons, not the personalized model scores or the smaller audit-model estimates reported later. A percentage point is a difference between percentages: 10% to 15% is +5 percentage points.
+
 ## 2. Preprocessing and feature engineering
 
 I corrected the area-label spelling inconsistency and created useful features:
@@ -23,6 +29,8 @@ I corrected the area-label spelling inconsistency and created useful features:
 - Log-transformed past spending to represent its skewed distribution.
 - Recency bands to group customers by how recently they purchased.
 - A prior-interest count using previous men’s and women’s category purchases.
+
+The redundant `history_segment` field was omitted because it groups the already available numeric spending history. Valid high-spending customers were retained, and no synthetic purchases were created to balance rare outcomes. Input checks stop on missing or impossible values rather than silently inventing replacements.
 
 I separated the data into 70% training and 30% testing, preserving the treatment-group proportions. Categorical encoding was fitted only on training data.
 
@@ -40,6 +48,8 @@ I created a causal directed acyclic graph identifying:
 - **Outcomes:** Visits, purchases and spending.
 - **Baseline predictors:** Customer information recorded before the campaign.
 
+Notebook 03 uses separate outcome graphs and identifies six comparisons: two email types versus No Email for each of visits, purchases and spending. The arrows express assumptions based on the study design; they are not automatically discovered from correlations. When estimating the total effect on spending, later visits and purchases are not adjustment variables, because they occur after email assignment.
+
 Because the email assignments were randomized, the real-data graph did not assume that past spending or other baseline characteristics caused email assignment.
 
 I also created a separate mock retail example where past spending influenced both receiving an offer and future spending. This demonstrated confounding: the direct comparison estimated an effect of about $70.79, while adjustment recovered approximately $19.88, close to the deliberately simulated true effect of $20.
@@ -48,7 +58,7 @@ I also created a separate mock retail example where past spending influenced bot
 
 I initialized a React dashboard with historical-data upload and validation, dataset summaries, causal-graph views and editable budget and assumed email-cost inputs.
 
-The budget controls show how many emails a budget could cover. Optimal allocation is reserved for Week 3.
+At the Week 1 stage, budget controls showed how many emails a budget could cover. Uploading historical data validated and previewed it; it did not train a new model. Optimal allocation was added in Week 3 and live API scoring in Week 4, so those later features should not be presented as Week 1 work.
 
 ## Week 1 outcome
 
@@ -62,4 +72,4 @@ The project established a reproducible data-preparation process, explicit causal
 
 > “In Week 1, I checked the customer data, prepared information known before the campaign, and drew the causal assumptions. I kept email assignment and later outcomes separate from model inputs. The mock example explains why starting differences can mislead us; the real email study used random assignment.”
 
-**Documentation review:** 5 November 2026. This write-up describes the Week 1 scope within the completed project; later allocation and API functionality belongs to Weeks 3 and 4.
+**Documentation review:** 10 November 2026. Cross-checked against notebooks 01–03; the numerical findings describe the saved analysis, not a new training run. This write-up describes the Week 1 scope within the completed project; later allocation and API functionality belongs to Weeks 3 and 4.
