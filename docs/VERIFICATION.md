@@ -40,7 +40,6 @@ Using the Codex in-app browser at its narrow default viewport:
 - Downloaded filtered scores through the browser and independently verified the resulting CSV contains all 2,178 matching rows, not only the visible page.
 - Inspected the randomized/mock DAG page, uplift evidence, uncertainty labels, audit warning and help page.
 - No browser console errors were captured during these checks.
-- A screenshot is saved as `dashboard-preview.jpg`.
 
 ## Build and limits
 
